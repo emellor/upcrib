@@ -1,4 +1,40 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# upCrib - Interior Design App
+
+A React Native app for interior design and space planning, built with TypeScript and React Navigation.
+
+## Features
+
+- 🏠 **Home Screen** - Welcome screen with centered logo and call-to-action
+- 🎨 **Design Studio** - Placeholder for design tools and workspace
+- 📱 **Cross-platform** - Supports both iOS and Android
+- 🧭 **Navigation** - React Navigation for smooth screen transitions
+- 🔧 **TypeScript** - Type-safe development experience
+
+## Tech Stack
+
+- **React Native** - 0.80.1
+- **TypeScript** - For type safety
+- **React Navigation** - For screen navigation
+- **React Native Gesture Handler** - For smooth gesture handling
+- **React Native Screens** - For native screen handling
+- **React Native Safe Area Context** - For safe area management
+
+## Project Structure
+
+```
+upCrib/
+├── src/
+│   ├── navigation/
+│   │   └── AppNavigator.tsx
+│   ├── screens/
+│   │   ├── HomeScreen.tsx
+│   │   └── DesignScreen.tsx
+│   └── assets/
+├── android/
+├── ios/
+├── App.tsx
+└── package.json
+```
 
 # Getting Started
 
