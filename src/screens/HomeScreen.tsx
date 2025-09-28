@@ -7,9 +7,11 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
+  Alert,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { RootStackParamList } from '../types/api';
+import { useSession } from '../hooks/useSession';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -18,8 +20,19 @@ interface HomeScreenProps {
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
-  const handleStartDesigning = () => {
-    navigation.navigate('Upload');
+  const { loading, error, createSession } = useSession();
+
+  const handleStartDesigning = async () => {
+    try {
+      const session = await createSession();
+      navigation.navigate('Upload', { sessionId: session.sessionId });
+    } catch (err: any) {
+      Alert.alert(
+        'Error',
+        err.message || 'Failed to start renovation session. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   return (
@@ -39,44 +52,55 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           </View>
           <View style={styles.taglineContainer}>
             <Text style={styles.tagline}>
-              Interior decorator assistant that delivers
+              AI-powered interior renovation assistant
             </Text>
             <Text style={styles.tagline}>
-              unique designs from your phone. Free.
+              Transform your space with personalized designs
             </Text>
           </View>
           <View style={styles.aiTag}>
-            <Text style={styles.aiTagText}>AI</Text>
+            <Text style={styles.aiTagText}>AI POWERED</Text>
           </View>
         </View>
 
         {/* Description */}
         <View style={styles.descriptionContainer}>
-          <Text style={styles.title}>1Visualize your space with</Text>
+          <Text style={styles.title}>Visualize your renovation</Text>
           <Text style={styles.subtitle}>
-            Multiple ideas, One of them is the right one, find it
+            Upload your house photo, answer AI questions,
           </Text>
           <Text style={styles.subtitle}>
-            Interior design, made simple and free
+            and see your space transformed instantly
           </Text>
         </View>
+
+        {/* Error Message */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
 
         {/* Buttons */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.startButton}
+            style={[styles.startButton, loading && styles.startButtonDisabled]}
             onPress={handleStartDesigning}
             activeOpacity={0.8}
+            disabled={loading}
           >
-            <Text style={styles.startButtonText}>GET STARTED</Text>
+            <Text style={styles.startButtonText}>
+              {loading ? 'STARTING SESSION...' : 'GET STARTED'}
+            </Text>
           </TouchableOpacity>
           
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.secondaryButtonText}>DARKER UX</Text>
-          </TouchableOpacity>
+          <View style={styles.featuresContainer}>
+            <Text style={styles.featuresTitle}>What to expect:</Text>
+            <Text style={styles.featureItem}>• Upload your house image</Text>
+            <Text style={styles.featureItem}>• AI analyzes your space</Text>
+            <Text style={styles.featureItem}>• Answer personalized questions</Text>
+            <Text style={styles.featureItem}>• Get instant renovation visualization</Text>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -118,12 +142,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
   },
-  logoText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    letterSpacing: 1,
-  },
   taglineContainer: {
     alignItems: 'center',
     marginBottom: 10,
@@ -147,19 +165,32 @@ const styles = StyleSheet.create({
     color: '#333333',
   },
   descriptionContainer: {
-    marginBottom: 50,
+    marginBottom: 30,
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: '#333333',
     marginBottom: 15,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
     color: '#666666',
     lineHeight: 20,
     marginBottom: 5,
+    textAlign: 'center',
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  errorText: {
+    color: '#c62828',
+    fontSize: 14,
+    textAlign: 'center',
   },
   buttonContainer: {
     marginTop: 'auto',
@@ -170,7 +201,10 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 25,
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 25,
+  },
+  startButtonDisabled: {
+    backgroundColor: '#E0E0E0',
   },
   startButtonText: {
     fontSize: 16,
@@ -178,19 +212,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 1,
   },
-  secondaryButton: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 15,
-    borderRadius: 25,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+  featuresContainer: {
+    backgroundColor: '#F8F9FA',
+    padding: 20,
+    borderRadius: 15,
   },
-  secondaryButtonText: {
+  featuresTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333333',
-    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  featureItem: {
+    fontSize: 14,
+    color: '#666666',
+    lineHeight: 22,
+    marginBottom: 5,
   },
 });
 

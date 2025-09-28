@@ -4,13 +4,15 @@ import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from '../screens/HomeScreen';
 import UploadScreen from '../screens/UploadScreen';
 import StyleScreen from '../screens/StyleScreen';
+import DesignScreen from '../screens/DesignScreen';
 import ResultScreen from '../screens/ResultScreen';
 
 export type RootStackParamList = {
   Home: undefined;
-  Upload: undefined;
-  Style: undefined;
-  Result: undefined;
+  Upload: { sessionId: string };
+  Style: { sessionId: string };
+  Design: { sessionId: string };
+  Result: { sessionId: string; imageUrl?: string };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -28,6 +30,7 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Upload" component={UploadScreen} />
         <Stack.Screen name="Style" component={StyleScreen} />
+        <Stack.Screen name="Design" component={DesignScreen} />
         <Stack.Screen name="Result" component={ResultScreen} />
       </Stack.Navigator>
     </NavigationContainer>

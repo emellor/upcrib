@@ -1,233 +1,379 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-  Image,
   ScrollView,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { apiClient } from '../services/apiClient';
+import { SessionData } from '../types/api';
 
 type ResultScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Result'>;
+type ResultScreenRouteProp = RouteProp<RootStackParamList, 'Result'>;
 
-interface ResultScreenProps {
+interface Props {
   navigation: ResultScreenNavigationProp;
+  route: ResultScreenRouteProp;
 }
 
-const ResultScreen: React.FC<ResultScreenProps> = ({ navigation }) => {
-  const handleBack = () => {
-    navigation.goBack();
-  };
+const { width } = Dimensions.get('window');
+const imageSize = width - 40; // Full width minus padding
 
-  const handleTryAnother = () => {
-    navigation.navigate('Style');
+const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { sessionId, imageUrl: propImageUrl } = route.params;
+  const [sessionData, setSessionData] = useState<SessionData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  useEffect(() => {
+    loadSessionData();
+  }, []);
+
+  const loadSessionData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await apiClient.getSessionState(sessionId);
+      setSessionData(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load results');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDownload = () => {
-    // Placeholder for download functionality
-    console.log('Download functionality');
+    // TODO: Implement actual download functionality
+    Alert.alert('Download', 'Download functionality will be implemented here.');
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#FFFFFF" />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+  const handleStartNew = () => {
+    // Navigate back to Home screen to start a new session
+    navigation.navigate('Home');
+  };
+
+  const getImageUrl = () => {
+    if (propImageUrl) return propImageUrl;
+    if (sessionData?.generatedImage) {
+      // Construct full URL for generated image using the correct endpoint
+      return `${apiClient.apiBaseURL}/generated/${sessionData.generatedImage.filename}`;
+    }
+    return null;
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading your results...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorTitle}>Something went wrong</Text>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={loadSessionData}>
+          <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>
-        <View style={styles.headerLogoContainer}>
-          <Image 
-            source={require('../images/logo.png')} 
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
-        </View>
-        <TouchableOpacity style={styles.shareButton}>
-          <Text style={styles.shareButtonText}>↗</Text>
+        <TouchableOpacity style={styles.homeButton} onPress={handleStartNew}>
+          <Text style={styles.homeButtonText}>Start New Design</Text>
         </TouchableOpacity>
       </View>
+    );
+  }
 
-      <ScrollView style={styles.content}>
-        {/* Control Sliders */}
-        <View style={styles.controlContainer}>
-          <View style={styles.sliderContainer}>
-            <Text style={styles.sliderLabel}>ПОГИБЕ</Text>
-            <View style={styles.slider}>
-              <View style={styles.sliderTrack} />
-              <View style={styles.sliderThumb} />
-            </View>
-          </View>
-          <View style={styles.sliderContainer}>
-            <Text style={styles.sliderLabel}>SECOND SLIDER</Text>
-            <View style={styles.slider}>
-              <View style={styles.sliderTrack} />
-              <View style={styles.sliderThumb} />
-            </View>
-          </View>
+  const imageUrl = getImageUrl();
+
+  return (
+    <View style={styles.container}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Your Design is Ready!</Text>
+          <Text style={styles.subtitle}>
+            Here's your AI-generated renovation design
+          </Text>
         </View>
 
-        {/* Result Image */}
+        {/* Generated Image */}
         <View style={styles.imageContainer}>
-          <View style={styles.resultImage}>
-            <Image
-              source={{ uri: 'https://via.placeholder.com/300x400/E8F4F8/333333?text=Generated+Result' }}
+          {imageUrl ? (
+            <Image 
+              source={{ uri: imageUrl }} 
               style={styles.image}
+              resizeMode="cover"
             />
-          </View>
+          ) : (
+            <View style={styles.placeholderImage}>
+              <Text style={styles.placeholderText}>No image available</Text>
+            </View>
+          )}
         </View>
+
+        {/* Image Info */}
+        {sessionData?.generatedImage && (
+          <View style={styles.imageInfo}>
+            <Text style={styles.imageInfoText}>
+              Generated on {new Date(sessionData.generatedImage.generatedAt).toLocaleDateString()}
+            </Text>
+          </View>
+        )}
 
         {/* Action Buttons */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.downloadButton} onPress={handleDownload}>
-            <Text style={styles.downloadButtonText}>Download</Text>
+          <TouchableOpacity 
+            style={styles.downloadButton}
+            onPress={handleDownload}
+          >
+            <Text style={styles.downloadButtonText}>Download Image</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.tryAnotherButton} onPress={handleTryAnother}>
-            <Text style={styles.tryAnotherButtonText}>Try Another Style</Text>
+
+          <TouchableOpacity 
+            style={styles.shareButton}
+            onPress={() => Alert.alert('Share', 'Share functionality coming soon!')}
+          >
+            <Text style={styles.shareButtonText}>Share Design</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Bottom spacing */}
-        <View style={styles.bottomSpacing} />
+        {/* Session Summary */}
+        {sessionData && (
+          <View style={styles.summaryContainer}>
+            <Text style={styles.summaryTitle}>Design Session Summary</Text>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Questions Answered:</Text>
+              <Text style={styles.summaryValue}>{sessionData.questionsAnswered} of {sessionData.totalQuestions}</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Status:</Text>
+              <Text style={[styles.summaryValue, styles.statusCompleted]}>Completed</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Created:</Text>
+              <Text style={styles.summaryValue}>{new Date(sessionData.createdAt).toLocaleDateString()}</Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Bottom Actions */}
+      <View style={styles.bottomActions}>
+        <TouchableOpacity 
+          style={styles.newDesignButton}
+          onPress={handleStartNew}
+        >
+          <Text style={styles.newDesignButtonText}>Create New Design</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8F9FA',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#F8F9FA',
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1C1C1E',
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  homeButton: {
+    backgroundColor: '#F2F2F7',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  homeButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
+    padding: 20,
+    paddingTop: 60,
     alignItems: 'center',
   },
-  backButtonText: {
-    fontSize: 20,
-    color: '#333333',
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1C1C1E',
+    textAlign: 'center',
+    marginBottom: 8,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333333',
-  },
-  headerLogoContainer: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerLogo: {
-    width: 80,
-    height: 30,
-  },
-  shareButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  shareButtonText: {
-    fontSize: 20,
-    color: '#333333',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  controlContainer: {
-    paddingVertical: 20,
-  },
-  sliderContainer: {
-    marginBottom: 20,
-  },
-  sliderLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 10,
-  },
-  slider: {
-    height: 6,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 3,
-    position: 'relative',
-  },
-  sliderTrack: {
-    height: 6,
-    backgroundColor: '#D4A574',
-    borderRadius: 3,
-    width: '60%',
-  },
-  sliderThumb: {
-    position: 'absolute',
-    right: '40%',
-    top: -4,
-    width: 14,
-    height: 14,
-    backgroundColor: '#D4A574',
-    borderRadius: 7,
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
   imageContainer: {
     alignItems: 'center',
-    marginBottom: 30,
-  },
-  resultImage: {
-    width: 300,
-    height: 400,
-    borderRadius: 15,
-    backgroundColor: '#F5F5F5',
-    overflow: 'hidden',
+    padding: 20,
   },
   image: {
-    width: '100%',
-    height: '100%',
+    width: imageSize,
+    height: imageSize,
+    borderRadius: 16,
+    backgroundColor: '#F2F2F7',
   },
-  buttonContainer: {
-    paddingBottom: 20,
-  },
-  downloadButton: {
-    backgroundColor: '#D4A574',
-    paddingVertical: 15,
-    borderRadius: 25,
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  downloadButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  tryAnotherButton: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 15,
-    borderRadius: 25,
+  placeholderImage: {
+    width: imageSize,
+    height: imageSize,
+    borderRadius: 16,
+    backgroundColor: '#F2F2F7',
+    justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#D4A574',
+    borderColor: '#E5E5EA',
+    borderStyle: 'dashed',
   },
-  tryAnotherButtonText: {
+  placeholderText: {
+    fontSize: 16,
+    color: '#999',
+  },
+  imageInfo: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  imageInfoText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 12,
+  },
+  downloadButton: {
+    flex: 1,
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  downloadButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    color: '#D4A574',
   },
-  bottomSpacing: {
-    height: 30,
+  shareButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  shareButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  summaryContainer: {
+    margin: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 16,
+  },
+  summaryItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  summaryLabel: {
+    fontSize: 16,
+    color: '#666',
+  },
+  summaryValue: {
+    fontSize: 16,
+    color: '#1C1C1E',
+    fontWeight: '500',
+  },
+  statusCompleted: {
+    color: '#34C759',
+  },
+  bottomActions: {
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5EA',
+  },
+  newDesignButton: {
+    backgroundColor: '#F2F2F7',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  newDesignButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

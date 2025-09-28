@@ -1,113 +1,367 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  TextInput,
   SafeAreaView,
   StatusBar,
-  ScrollView,
-  Image,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { useQuestions } from '../hooks/useQuestions';
+import { Question } from '../types/api';
+import { apiClient } from '../services/apiClient';
 
 type StyleScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Style'>;
+type StyleScreenRouteProp = RouteProp<RootStackParamList, 'Style'>;
 
-interface StyleScreenProps {
+interface Props {
   navigation: StyleScreenNavigationProp;
+  route: StyleScreenRouteProp;
 }
 
-const styles_data = [
-  { id: 1, name: 'Modern', color: '#7FB3D3', image: 'https://via.placeholder.com/150x150/7FB3D3/FFFFFF?text=Modern' },
-  { id: 2, name: 'Minimalist', color: '#E8E8E8', image: 'https://via.placeholder.com/150x150/E8E8E8/333333?text=Minimal' },
-  { id: 3, name: 'Scandinavian', color: '#F5F5DC', image: 'https://via.placeholder.com/150x150/F5F5DC/333333?text=Scandi' },
-  { id: 4, name: 'Industrial', color: '#8B4513', image: 'https://via.placeholder.com/150x150/8B4513/FFFFFF?text=Industrial' },
-  { id: 5, name: 'Bohemian', color: '#DDA0DD', image: 'https://via.placeholder.com/150x150/DDA0DD/333333?text=Boho' },
-  { id: 6, name: 'Traditional', color: '#8B0000', image: 'https://via.placeholder.com/150x150/8B0000/FFFFFF?text=Traditional' },
-];
+const StyleScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { sessionId } = route.params;
+  const { 
+    questions, 
+    loading, 
+    error, 
+    answers,
+    allAnswered,
+    getQuestions, 
+    setAnswer,
+    submitAnswers 
+  } = useQuestions();
 
-const StyleScreen: React.FC<StyleScreenProps> = ({ navigation }) => {
-  const [selectedStyle, setSelectedStyle] = useState<number | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sessionStatus, setSessionStatus] = useState<string>('');
+  const [isPolling, setIsPolling] = useState(false);
+  const [pollAttempts, setPollAttempts] = useState(0);
+  const [showReadyMessage, setShowReadyMessage] = useState(false);
+  const maxPollAttempts = 40; // 3+ minutes at 5 second intervals
 
-  const handleStyleSelect = (styleId: number) => {
-    setSelectedStyle(styleId);
+  useEffect(() => {
+    checkStatusAndLoadQuestions();
+  }, []);
+
+  const checkStatusAndLoadQuestions = async () => {
+    try {
+      const sessionState = await apiClient.getSessionState(sessionId);
+      console.log('Session state:', sessionState);
+      setSessionStatus(sessionState.status);
+
+      if (sessionState.hasQuestions && sessionState.status === 'questions_ready') {
+        // Questions are ready, load them
+        console.log('Questions are ready, loading...');
+        await loadQuestions();
+        setIsPolling(false);
+      } else if (sessionState.status === 'analyzing') {
+        // Still analyzing, start polling
+        console.log('Still analyzing, starting poll...');
+        if (!isPolling) {
+          startPolling();
+        }
+      } else if (sessionState.status === 'failed') {
+        console.log('Analysis failed');
+        setIsPolling(false);
+      } else if (sessionState.status === 'uploaded') {
+        // Image uploaded but analysis not started, try to start analysis
+        console.log('Image uploaded, checking if analysis started...');
+        setIsPolling(false);
+      } else {
+        console.log('Unexpected status:', sessionState.status);
+      }
+    } catch (err) {
+      console.error('Failed to check session status:', err);
+    }
   };
 
-  const handleContinue = () => {
-    navigation.navigate('Result');
+  const startPolling = () => {
+    if (isPolling) return;
+    
+    console.log('Starting polling...');
+    setIsPolling(true);
+    setPollAttempts(0);
+    pollSessionState();
   };
 
-  const handleBack = () => {
-    navigation.goBack();
+  const pollSessionState = async () => {
+    try {
+      const sessionState = await apiClient.getSessionState(sessionId);
+      console.log(`Poll attempt ${pollAttempts + 1}:`, sessionState.status, 'hasQuestions:', sessionState.hasQuestions);
+      
+      setSessionStatus(sessionState.status);
+      setPollAttempts(prev => prev + 1);
+
+      if (sessionState.hasQuestions && sessionState.status === 'questions_ready') {
+        // Questions are now ready
+        console.log('Questions ready after polling, loading...');
+        setIsPolling(false);
+        await loadQuestions();
+        return;
+      } else if (sessionState.status === 'failed') {
+        // Analysis failed
+        console.log('Analysis failed during polling');
+        setIsPolling(false);
+        return;
+      } else if (pollAttempts >= maxPollAttempts) {
+        // Timeout
+        console.log('Polling timeout reached');
+        setIsPolling(false);
+        setSessionStatus('timeout');
+        return;
+      }
+
+      // Continue polling if still analyzing
+      if (sessionState.status === 'analyzing') {
+        setTimeout(pollSessionState, 5000); // Poll every 5 seconds
+      } else {
+        setIsPolling(false);
+      }
+    } catch (err) {
+      console.error('Polling error:', err);
+      setTimeout(pollSessionState, 10000); // Retry after 10 seconds on error
+    }
   };
+
+  const loadQuestions = async () => {
+    try {
+      await getQuestions(sessionId);
+    } catch (err) {
+      console.error('Failed to load questions:', err);
+      Alert.alert('Error', 'Failed to load questions. Please try again.');
+    }
+  };
+
+  const handleRetry = () => {
+    if (sessionStatus === 'failed' || sessionStatus === 'timeout') {
+      Alert.alert(
+        sessionStatus === 'timeout' ? 'Analysis Timeout' : 'Analysis Failed', 
+        'The image analysis ' + (sessionStatus === 'timeout' ? 'took too long' : 'failed') + '. Would you like to try uploading a new image?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Upload New Image', 
+            onPress: () => navigation.navigate('Upload', { sessionId })
+          }
+        ]
+      );
+    } else {
+      checkStatusAndLoadQuestions();
+    }
+  };
+
+  const handleAnswer = (questionId: string, value: string) => {
+    setAnswer(questionId, value);
+  };
+
+  const handleNext = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else {
+      handleSubmitAnswers();
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  };
+
+  const handleSubmitAnswers = async () => {
+    setIsSubmitting(true);
+    try {
+      await submitAnswers(sessionId);
+      setShowReadyMessage(true);
+      // Show the "Your design is ready" message for 3 seconds before navigating
+      setTimeout(() => {
+        navigation.navigate('Design', { sessionId });
+      }, 3000);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to submit answers. Please try again.');
+      setIsSubmitting(false);
+    }
+  };
+
+  const getCurrentAnswer = () => {
+    if (questions.length === 0) return '';
+    const currentQuestion = questions[currentQuestionIndex];
+    return answers[currentQuestion.id] || '';
+  };
+
+  const isCurrentAnswerValid = () => {
+    const answer = getCurrentAnswer();
+    return answer.trim() !== '';
+  };
+
+  // Loading state
+  if (loading && questions.length === 0) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading questions...</Text>
+      </View>
+    );
+  }
+
+  // No questions available - show status based message
+  if (questions.length === 0) {
+    let message = 'No questions available';
+    let showSpinner = false;
+    let buttonText = 'Retry';
+    
+    if (isPolling) {
+      message = `Analyzing your image... (${pollAttempts}/${maxPollAttempts})`;
+      showSpinner = true;
+      buttonText = 'Check Status';
+    } else if (sessionStatus === 'analyzing') {
+      message = 'AI is analyzing your house...';
+      buttonText = 'Start Polling';
+      showSpinner = false;
+    } else if (sessionStatus === 'failed') {
+      message = 'Image analysis failed';
+      buttonText = 'Upload New Image';
+    } else if (sessionStatus === 'timeout') {
+      message = 'Analysis is taking longer than expected';
+      buttonText = 'Upload New Image';
+    } else if (sessionStatus === 'uploaded') {
+      message = 'Image uploaded, analysis may not have started';
+      buttonText = 'Check Status';
+    }
+
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{message}</Text>
+        {showSpinner && (
+          <View style={styles.analyzingContainer}>
+            <ActivityIndicator size="small" color="#007AFF" />
+            <Text style={styles.analyzingText}>
+              Please wait while we process your image
+            </Text>
+          </View>
+        )}
+        {!showSpinner && (
+          <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+            <Text style={styles.retryButtonText}>{buttonText}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  }
+
+  // Questions available - show question interface
+  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const currentQuestion = questions[currentQuestionIndex];
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <View style={styles.headerLogoContainer}>
-          <Image 
-            source={require('../images/logo.png')} 
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
+      <StatusBar barStyle="dark-content" />
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+        bounces={false}
+      >
+        <View style={styles.progressContainer}>
+          <Text style={styles.progressText}>
+            {currentQuestionIndex + 1} of {questions.length}
+          </Text>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: `${progress}%` }]} />
+          </View>
         </View>
-        <TouchableOpacity style={styles.menuButton}>
-          <Text style={styles.menuButtonText}>⋮</Text>
-        </TouchableOpacity>
-      </View>
 
-      <ScrollView style={styles.content}>
-        {/* Style Selection Grid */}
-        <View style={styles.styleGrid}>
-          {styles_data.map((style) => (
-            <TouchableOpacity
-              key={style.id}
-              style={[
-                styles.styleItem,
-                selectedStyle === style.id && styles.selectedStyleItem
-              ]}
-              onPress={() => handleStyleSelect(style.id)}
-            >
-              <Image source={{ uri: style.image }} style={styles.styleImage} />
-              <Text style={styles.styleName}>{style.name}</Text>
+        <View style={styles.questionContainer}>
+          <Text style={styles.questionText}>{currentQuestion.prompt}</Text>
+          
+          {currentQuestion.type === 'multiple_choice' ? (
+            <View style={styles.optionsContainer}>
+              {currentQuestion.options?.map((option, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.optionButton,
+                    answers[currentQuestion.id] === option && styles.optionButtonSelected,
+                  ]}
+                  onPress={() => handleAnswer(currentQuestion.id, option)}
+                >
+                  <Text
+                    style={[
+                      styles.optionText,
+                      answers[currentQuestion.id] === option && styles.optionTextSelected,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.textInputContainer}>
+              <Text style={styles.inputLabel}>Your answer:</Text>
+              <TextInput
+                style={styles.textInput}
+                value={getCurrentAnswer()}
+                onChangeText={(text: string) => handleAnswer(currentQuestion.id, text)}
+                placeholder="Type your answer here..."
+                multiline
+                textAlignVertical="top"
+              />
+            </View>
+          )}
+        </View>
+
+        <View style={styles.buttonContainer}>
+          {currentQuestionIndex > 0 && (
+            <TouchableOpacity style={styles.secondaryButton} onPress={handlePrevious}>
+              <Text style={styles.secondaryButtonText}>Previous</Text>
             </TouchableOpacity>
-          ))}
+          )}
+          
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              !isCurrentAnswerValid() && styles.primaryButtonDisabled,
+            ]}
+            onPress={handleNext}
+            disabled={!isCurrentAnswerValid() || isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryButtonText}>
+                {currentQuestionIndex === questions.length - 1 ? 'Generate Design' : 'Next'}
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* Style Selection Label */}
-        <Text style={styles.sectionTitle}>Style Selection</Text>
-        
-        {/* Additional Style Options */}
-        <View style={styles.additionalStyles}>
-          <TouchableOpacity style={styles.additionalStyleItem}>
-            <Text style={styles.additionalStyleText}>Boho-chic Decor</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.additionalStyleItem}>
-            <Text style={styles.additionalStyleText}>AI Modern</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.additionalStyleItem}>
-            <Text style={styles.additionalStyleText}>Neon Classic</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Your Design Is Ready Message */}
+        {showReadyMessage && (
+          <View style={styles.readyMessageContainer}>
+            <View style={styles.readyMessageContent}>
+              <Text style={styles.readyMessageTitle}>🎉 Your Design Is Ready!</Text>
+              <Text style={styles.readyMessageSubtitle}>
+                We're now generating your personalized renovation designs
+              </Text>
+              <View style={styles.readyMessageLoader}>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={styles.readyMessageProgress}>Preparing your amazing results...</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Add extra space to ensure scroll beyond screen */}
+        <View style={styles.bottomSpacer} />
       </ScrollView>
-
-      {/* Continue Button */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.continueButton, !selectedStyle && styles.continueButtonDisabled]}
-          onPress={handleContinue}
-          disabled={!selectedStyle}
-        >
-          <Text style={styles.continueButtonText}>Continue</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 };
@@ -115,127 +369,223 @@ const StyleScreen: React.FC<StyleScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8F9FA',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+  scrollContent: {
+    flexGrow: 1,
+    padding: 20,
+    paddingBottom: 40,
   },
-  backButton: {
-    width: 40,
-    height: 40,
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F8F9FA',
   },
-  backButtonText: {
-    fontSize: 20,
-    color: '#333333',
-  },
-  headerTitle: {
+  loadingText: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333333',
-  },
-  headerLogoContainer: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerLogo: {
-    width: 80,
-    height: 30,
-  },
-  menuButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuButtonText: {
-    fontSize: 20,
-    color: '#333333',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  styleGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 30,
-  },
-  styleItem: {
-    width: '48%',
-    marginBottom: 15,
-    borderRadius: 15,
-    backgroundColor: '#F8F8F8',
-    padding: 15,
-    alignItems: 'center',
-  },
-  selectedStyleItem: {
-    borderWidth: 2,
-    borderColor: '#D4A574',
-  },
-  styleImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  styleName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333333',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333333',
-    marginBottom: 20,
-  },
-  additionalStyles: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 30,
-  },
-  additionalStyleItem: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    marginHorizontal: 5,
-    alignItems: 'center',
-  },
-  additionalStyleText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#333333',
+    color: '#666',
+    marginTop: 20,
     textAlign: 'center',
   },
-  buttonContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-  },
-  continueButton: {
-    backgroundColor: '#D4A574',
-    paddingVertical: 15,
-    borderRadius: 25,
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    padding: 20,
   },
-  continueButtonDisabled: {
-    backgroundColor: '#E0E0E0',
+  errorText: {
+    fontSize: 18,
+    color: '#FF3B30',
+    textAlign: 'center',
+    marginBottom: 20,
   },
-  continueButtonText: {
+  analyzingContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  analyzingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  progressContainer: {
+    marginBottom: 30,
+  },
+  progressText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#E5E5EA',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#007AFF',
+    borderRadius: 4,
+  },
+  questionContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  questionText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    lineHeight: 28,
+    marginBottom: 24,
+  },
+  optionsContainer: {
+    gap: 12,
+  },
+  optionButton: {
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  optionButtonSelected: {
+    backgroundColor: '#E3F2FD',
+    borderColor: '#007AFF',
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#1C1C1E',
+    fontWeight: '500',
+  },
+  optionTextSelected: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  textInputContainer: {
+    marginTop: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 12,
+  },
+  textInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    padding: 16,
+    fontSize: 16,
+    color: '#1C1C1E',
+    lineHeight: 24,
+    minHeight: 100,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 20,
+    paddingTop: 20,
+  },
+  primaryButton: {
+    flex: 1,
+    backgroundColor: '#007AFF',
+    paddingVertical: 18,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButtonDisabled: {
+    backgroundColor: '#C7C7CC',
+  },
+  primaryButtonText: {
     color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    backgroundColor: '#F2F2F7',
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButtonText: {
+    color: '#007AFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  readyMessageContainer: {
+    marginTop: 60,
+    marginBottom: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 400, // Ensure it extends below the fold
+  },
+  readyMessageContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 40,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  readyMessageTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  readyMessageSubtitle: {
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  readyMessageLoader: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  readyMessageProgress: {
+    fontSize: 14,
+    color: '#007AFF',
+    marginTop: 16,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  bottomSpacer: {
+    height: 200, // Extra space to ensure scrolling beyond the screen
   },
 });
 
