@@ -10,6 +10,7 @@ import {
   TextInput,
   SafeAreaView,
   StatusBar,
+  Image,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -45,6 +46,7 @@ const StyleScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isPolling, setIsPolling] = useState(false);
   const [pollAttempts, setPollAttempts] = useState(0);
   const [showReadyMessage, setShowReadyMessage] = useState(false);
+  const [sessionData, setSessionData] = useState<any>(null);
   const maxPollAttempts = 40; // 3+ minutes at 5 second intervals
 
   useEffect(() => {
@@ -56,6 +58,7 @@ const StyleScreen: React.FC<Props> = ({ navigation, route }) => {
       const sessionState = await apiClient.getSessionState(sessionId);
       console.log('Session state:', sessionState);
       setSessionStatus(sessionState.status);
+      setSessionData(sessionState); // Store the full session data
 
       if (sessionState.hasQuestions && sessionState.status === 'questions_ready') {
         // Questions are ready, load them
@@ -349,11 +352,39 @@ const StyleScreen: React.FC<Props> = ({ navigation, route }) => {
             <View style={styles.readyMessageContent}>
               <Text style={styles.readyMessageTitle}>🎉 Your Design Is Ready!</Text>
               <Text style={styles.readyMessageSubtitle}>
-                We're now generating your personalized renovation designs
+                Here's a summary of your renovation preferences
               </Text>
+
+              {/* Original Image */}
+              {sessionData?.uploadedImage && (
+                <View style={styles.originalImageSection}>
+                  <Text style={styles.sectionTitle}>Original Image</Text>
+                  <Image
+                    source={{ uri: `${apiClient.apiBaseURL}/uploads/${sessionData.uploadedImage.filename}` }}
+                    style={styles.originalImage}
+                    resizeMode="cover"
+                  />
+                </View>
+              )}
+
+              {/* Questions and Answers Summary */}
+              <View style={styles.summarySection}>
+                <Text style={styles.sectionTitle}>Your Renovation Preferences</Text>
+                {questions.map((question, index) => (
+                  <View key={question.id} style={styles.qaItem}>
+                    <Text style={styles.questionSummary}>
+                      {index + 1}. {question.prompt}
+                    </Text>
+                    <Text style={styles.answerSummary}>
+                      {answers[question.id] || 'No answer provided'}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
               <View style={styles.readyMessageLoader}>
                 <ActivityIndicator size="large" color="#007AFF" />
-                <Text style={styles.readyMessageProgress}>Preparing your amazing results...</Text>
+                <Text style={styles.readyMessageProgress}>Generating your personalized designs...</Text>
               </View>
             </View>
           </View>
@@ -544,12 +575,12 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 400, // Ensure it extends below the fold
+    minHeight: 600, // Increased height to accommodate the additional content
   },
   readyMessageContent: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 40,
+    padding: 32,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -558,6 +589,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     borderWidth: 1,
     borderColor: '#E5E5EA',
+    maxWidth: '100%',
   },
   readyMessageTitle: {
     fontSize: 28,
@@ -586,6 +618,46 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 200, // Extra space to ensure scrolling beyond the screen
+  },
+  originalImageSection: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  originalImage: {
+    width: 280,
+    height: 200,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  summarySection: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  qaItem: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  questionSummary: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  answerSummary: {
+    fontSize: 13,
+    color: '#666666',
+    lineHeight: 16,
   },
 });
 
