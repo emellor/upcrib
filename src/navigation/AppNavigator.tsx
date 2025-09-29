@@ -10,9 +10,9 @@ import ResultScreen from '../screens/ResultScreen';
 export type RootStackParamList = {
   Home: undefined;
   Upload: { sessionId: string };
-  Style: { sessionId: string };
-  Design: { sessionId: string };
-  Result: { sessionId: string; imageUrl?: string };
+  Style: { sessionId: string; imageUrl?: string };
+  Design: { sessionId: string; answers?: { [questionId: string]: string }; imageUrl?: string };
+  Result: { sessionId: string; imageUrl?: string; answers?: { [questionId: string]: string }; originalImageUrl?: string };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
