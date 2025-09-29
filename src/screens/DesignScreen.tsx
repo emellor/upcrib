@@ -26,7 +26,7 @@ interface DesignScreenProps {
 type GenerationStatus = 'starting' | 'processing' | 'completed' | 'failed';
 
 const DesignScreen: React.FC<DesignScreenProps> = ({ navigation, route }) => {
-  const { sessionId } = route.params;
+  const { sessionId, answers, imageUrl } = route.params;
   const [status, setStatus] = useState<GenerationStatus>('starting');
   const [progress, setProgress] = useState(0);
   const [estimatedTime, setEstimatedTime] = useState(120); // 2 minutes default
@@ -99,7 +99,7 @@ const DesignScreen: React.FC<DesignScreenProps> = ({ navigation, route }) => {
             clearInterval(pollInterval);
             // Small delay before navigating to show completion
             setTimeout(() => {
-              navigation.navigate('Result', { sessionId });
+              navigation.navigate('Result', { sessionId, answers, originalImageUrl: imageUrl });
             }, 1500);
             break;
           case 'failed':

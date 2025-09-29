@@ -28,11 +28,14 @@ const { width } = Dimensions.get('window');
 const imageSize = width - 40; // Full width minus padding
 
 const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { sessionId, imageUrl: propImageUrl } = route.params;
+  const { sessionId, imageUrl: propImageUrl, answers: routeAnswers, originalImageUrl } = route.params;
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showQuestions, setShowQuestions] = useState(false);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [answers, setAnswers] = useState<{ [questionId: string]: string }>(routeAnswers || {});
 
   useEffect(() => {
     loadSessionData();
@@ -44,6 +47,16 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
       setError(null);
       const data = await apiClient.getSessionState(sessionId);
       setSessionData(data);
+      
+      // Load questions if available
+      if (data.hasQuestions) {
+        try {
+          const questionsResponse = await apiClient.getQuestions(sessionId);
+          setQuestions(questionsResponse.questions || []);
+        } catch (err) {
+          console.error('Failed to load questions:', err);
+        }
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load results');
     } finally {
@@ -59,6 +72,10 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleStartNew = () => {
     // Navigate back to Home screen to start a new session
     navigation.navigate('Home');
+  };
+
+  const toggleQuestions = () => {
+    setShowQuestions(!showQuestions);
   };
 
   const getImageUrl = () => {
@@ -107,20 +124,56 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
           </Text>
         </View>
 
-        {/* Generated Image */}
-        <View style={styles.imageContainer}>
-          {imageUrl ? (
-            <Image 
-              source={{ uri: imageUrl }} 
-              style={styles.image}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={styles.placeholderImage}>
-              <Text style={styles.placeholderText}>No image available</Text>
+        {/* Before & After Comparison */}
+        {originalImageUrl ? (
+          <View style={styles.comparisonSection}>
+            <Text style={styles.comparisonTitle}>Before & After</Text>
+            
+            {/* Original Image */}
+            <View style={[styles.imageContainer, styles.comparisonImageContainer]}>
+              <Text style={styles.imageLabel}>Original</Text>
+              <Image 
+                source={{ uri: `${apiClient.apiBaseURL}${originalImageUrl}` }} 
+                style={styles.image}
+                resizeMode="cover"
+                onLoad={() => console.log('Original image loaded successfully from:', `${apiClient.apiBaseURL}${originalImageUrl}`)}
+                onError={(error) => console.log('Original image failed to load:', error.nativeEvent.error)}
+              />
             </View>
-          )}
-        </View>
+
+            {/* Generated Image */}
+            <View style={[styles.imageContainer, styles.comparisonImageContainer]}>
+              <Text style={styles.imageLabel}>AI-Generated Design</Text>
+              {imageUrl ? (
+                <Image 
+                  source={{ uri: imageUrl }} 
+                  style={styles.image}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.placeholderImage}>
+                  <Text style={styles.placeholderText}>No generated image available</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        ) : (
+          // Show only generated image when original is not available
+          <View style={styles.imageContainer}>
+            <Text style={styles.imageLabel}>Generated Design</Text>
+            {imageUrl ? (
+              <Image 
+                source={{ uri: imageUrl }} 
+                style={styles.image}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.placeholderImage}>
+                <Text style={styles.placeholderText}>No image available</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Image Info */}
         {sessionData?.generatedImage && (
@@ -164,6 +217,80 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={styles.summaryLabel}>Created:</Text>
               <Text style={styles.summaryValue}>{new Date(sessionData.createdAt).toLocaleDateString()}</Text>
             </View>
+          </View>
+        )}
+
+        {/* Questions and Answers Section */}
+        {questions.length > 0 && (
+          <View style={styles.questionsContainer}>
+            <TouchableOpacity 
+              style={styles.questionsToggle}
+              onPress={toggleQuestions}
+            >
+              <Text style={styles.questionsToggleTitle}>
+                Design Questions
+              </Text>
+              <Text style={styles.questionsToggleText}>
+                {showQuestions ? 'Hide' : 'Show'} questions
+              </Text>
+              <Text style={styles.questionsToggleIcon}>
+                {showQuestions ? '▲' : '▼'}
+              </Text>
+            </TouchableOpacity>
+
+            {showQuestions && (
+              <View style={styles.questionsContent}>
+                <Text style={styles.questionsDescription}>
+                  These are the design preference questions you answered to generate your renovation:
+                </Text>
+                {questions.map((question, index) => (
+                  <View key={question.id} style={styles.questionItem}>
+                    <Text style={styles.questionText}>
+                      {index + 1}. {question.prompt}
+                    </Text>
+                    
+                    {/* Show the user's selected answer if available */}
+                    {answers[question.id] && (
+                      <View style={styles.selectedAnswerContainer}>
+                        <Text style={styles.selectedAnswerLabel}>Your answer:</Text>
+                        <Text style={styles.selectedAnswerText}>
+                          {answers[question.id]}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {/* Show options for multiple choice questions */}
+                    {question.type === 'multiple_choice' && question.options && question.options.length > 0 && (
+                      <View style={styles.optionsContainer}>
+                        <Text style={styles.optionsLabel}>
+                          {answers[question.id] ? 'All options were:' : 'Available options were:'}
+                        </Text>
+                        {question.options.map((option: string, optionIndex: number) => (
+                          <Text 
+                            key={optionIndex} 
+                            style={[
+                              styles.optionText,
+                              answers[question.id] === option && styles.optionTextSelected
+                            ]}
+                          >
+                            {answers[question.id] === option ? '✓ ' : '• '}{option}
+                          </Text>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Show note if no answer data available */}
+                    {!answers[question.id] && Object.keys(answers).length === 0 && (
+                      <View style={styles.noAnswerNote}>
+                        <Text style={styles.noAnswerText}>
+                          You provided an answer to this question during the design process.
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -262,6 +389,13 @@ const styles = StyleSheet.create({
   imageContainer: {
     alignItems: 'center',
     padding: 20,
+  },
+  imageLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   image: {
     width: imageSize,
@@ -374,6 +508,169 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  questionsContainer: {
+    margin: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  questionsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    backgroundColor: '#F8F9FA',
+  },
+  questionsToggleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    flex: 1,
+  },
+  questionsToggleText: {
+    fontSize: 14,
+    color: '#007AFF',
+    marginRight: 8,
+  },
+  questionsToggleIcon: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
+  questionsContent: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  questionItem: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  questionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  answerText: {
+    fontSize: 15,
+    color: '#666',
+    lineHeight: 20,
+    paddingLeft: 16,
+  },
+  questionsDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  optionsContainer: {
+    marginTop: 8,
+    paddingLeft: 16,
+  },
+  optionsLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 4,
+  },
+  optionText: {
+    fontSize: 14,
+    color: '#888',
+    lineHeight: 18,
+    marginBottom: 2,
+  },
+  selectedAnswerContainer: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#007AFF',
+  },
+  selectedAnswerLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#007AFF',
+    marginBottom: 4,
+  },
+  selectedAnswerText: {
+    fontSize: 15,
+    color: '#1C1C1E',
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  optionTextSelected: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  noAnswerNote: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 6,
+    padding: 10,
+    marginTop: 8,
+    borderLeftWidth: 2,
+    borderLeftColor: '#E5E5EA',
+  },
+  noAnswerText: {
+    fontSize: 13,
+    color: '#666',
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
+  comparisonSection: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 16,
+    paddingTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  comparisonTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  comparisonImageContainer: {
+    paddingBottom: 15,
+    paddingTop: 10,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 5,
+    fontFamily: 'monospace',
+  },
+  debugContainer: {
+    backgroundColor: '#FFF3CD',
+    padding: 20,
+    margin: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFEAA7',
+  },
+  debugTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#856404',
+    marginBottom: 10,
   },
 });
 

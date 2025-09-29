@@ -11,6 +11,7 @@ export interface SessionData {
   totalQuestions: number;
   hasPendingJobs: boolean;
   image?: ImageMetadata;
+  imageUrl?: string;  // URL path for uploaded image (e.g., "/uploads/filename.jpg")
   generatedImage?: GeneratedImageData;
   questions?: Question[];
   pendingJobs?: Job[];
@@ -99,9 +100,9 @@ export interface APIResponse<T = any> {
 export type RootStackParamList = {
   Home: undefined;
   Upload: { sessionId: string };
-  Style: { sessionId: string };
-  Design: { sessionId: string };
-  Result: { sessionId: string; imageUrl?: string };
+  Style: { sessionId: string; imageUrl?: string };
+  Design: { sessionId: string; answers?: { [questionId: string]: string }; imageUrl?: string };
+  Result: { sessionId: string; imageUrl?: string; answers?: { [questionId: string]: string }; originalImageUrl?: string };
 };
 
 export interface UploadResult {

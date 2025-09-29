@@ -28,7 +28,7 @@ interface Props {
 }
 
 const StyleScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { sessionId } = route.params;
+  const { sessionId, imageUrl } = route.params;
   const { 
     questions, 
     loading, 
@@ -186,7 +186,7 @@ const StyleScreen: React.FC<Props> = ({ navigation, route }) => {
       setShowReadyMessage(true);
       // Show the "Your design is ready" message for 3 seconds before navigating
       setTimeout(() => {
-        navigation.navigate('Design', { sessionId });
+        navigation.navigate('Design', { sessionId, answers, imageUrl });
       }, 3000);
     } catch (err) {
       Alert.alert('Error', 'Failed to submit answers. Please try again.');

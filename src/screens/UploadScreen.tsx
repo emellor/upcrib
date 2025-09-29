@@ -90,14 +90,14 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
 
     try {
       // Upload image
-      await uploadImage(sessionId, selectedImage);
+      const uploadResult = await uploadImage(sessionId, selectedImage);
       
       // Trigger analysis
       setAnalyzing(true);
       await triggerAnalysis(sessionId);
       
-      // Navigate to style screen (questions)
-      navigation.navigate('Style', { sessionId });
+      // Navigate to style screen with the uploaded image URL
+      navigation.navigate('Style', { sessionId, imageUrl: uploadResult.imageUrl });
     } catch (err: any) {
       Alert.alert(
         'Upload Failed', 
