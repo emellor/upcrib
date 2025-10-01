@@ -12,7 +12,8 @@ import {
 
 // API Configuration
 const API_CONFIG = {
-  baseURL: __DEV__ ? 'http://localhost:3001' : 'https://api.upcrib.com',
+  baseURL: 'https://upcrib-backend.onrender.com', // Force production URL for now
+  // baseURL: __DEV__ ? 'http://localhost:3001' : 'https://upcrib-backend.onrender.com',
   apiPath: '/api',
   timeout: 30000, // 30 seconds
   headers: {
@@ -264,7 +265,7 @@ export class UpCribAPIClient {
 // Export the appropriate client based on environment and availability
 const createApiClient = () => {
   // Always use the real API client now that backend is available
-  console.log('Using Real API Client:', __DEV__ ? 'http://localhost:3001' : 'https://api.upcrib.com');
+  console.log('Using Real API Client: https://upcrib-backend.onrender.com');
   return new UpCribAPIClient();
 };
 

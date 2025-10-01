@@ -10,6 +10,9 @@ import {
   Alert,
   Dimensions,
   TextInput,
+  Linking,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -68,9 +71,93 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
-  const handleDownload = () => {
-    // TODO: Implement actual download functionality
-    Alert.alert('Download', 'Download functionality will be implemented here.');
+  const handleDownload = async () => {
+    try {
+      const imageUrl = getImageUrl();
+      if (!imageUrl) {
+        Alert.alert('Error', 'No image available to download');
+        return;
+      }
+
+      // Extract filename from sessionData or use a default
+      const filename = sessionData?.generatedImage?.filename || 'upcrib-design.jpg';
+      
+      if (Platform.OS === 'ios') {
+        // For iOS, open the image URL directly - iOS will handle the download
+        await Linking.openURL(imageUrl);
+      } else {
+        // For Android, we would need react-native-fs for file downloads
+        // For now, open the URL in browser
+        await Linking.openURL(imageUrl);
+      }
+      
+      Alert.alert('Download', 'Image download initiated. Check your device\'s download folder.');
+    } catch (error) {
+      console.error('Download failed:', error);
+      Alert.alert('Error', 'Failed to download image. Please try again.');
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      const imageUrl = getImageUrl();
+      if (!imageUrl) {
+        Alert.alert('Error', 'No image available to share');
+        return;
+      }
+
+      // Show share options
+      Alert.alert(
+        'Share Your Design',
+        'How would you like to share your renovation design?',
+        [
+          {
+            text: 'Message/SMS',
+            onPress: async () => {
+              try {
+                const shareMessage = `Check out my AI-generated renovation design from upCrib! ${imageUrl}`;
+                const smsUrl = `sms:?&body=${encodeURIComponent(shareMessage)}`;
+                await Linking.openURL(smsUrl);
+              } catch (error) {
+                Alert.alert('Error', 'Could not open messaging app');
+              }
+            }
+          },
+          {
+            text: 'Email',
+            onPress: async () => {
+              try {
+                const subject = 'My upCrib Renovation Design';
+                const body = `Check out my AI-generated renovation design!\n\nView the design here: ${imageUrl}\n\nGenerated with upCrib - AI-powered home renovation designs.`;
+                const emailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                await Linking.openURL(emailUrl);
+              } catch (error) {
+                Alert.alert('Error', 'Could not open email app');
+              }
+            }
+          },
+          {
+            text: 'Copy Link',
+            onPress: () => {
+              Alert.alert(
+                'Design Link', 
+                'Copy this link to share your design:\n\n' + imageUrl,
+                [
+                  { text: 'OK', style: 'default' }
+                ]
+              );
+            }
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Share failed:', error);
+      Alert.alert('Error', 'Failed to share design. Please try again.');
+    }
   };
 
   const handleStartNew = () => {
@@ -252,7 +339,7 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
 
           <TouchableOpacity 
             style={styles.shareButton}
-            onPress={() => Alert.alert('Share', 'Share functionality coming soon!')}
+            onPress={handleShare}
           >
             <Text style={styles.shareButtonText}>Share Design</Text>
           </TouchableOpacity>
