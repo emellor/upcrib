@@ -13,6 +13,9 @@ import {
   Linking,
   Platform,
   PermissionsAndroid,
+  Modal,
+  Animated,
+  StatusBar,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -43,6 +46,13 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
   const [editMode, setEditMode] = useState(false);
   const [updatedAnswers, setUpdatedAnswers] = useState<{ [questionId: string]: string }>(routeAnswers || {});
   const [regenerating, setRegenerating] = useState(false);
+  
+  // Modal states for overlay UX
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [slideAnimation] = useState(new Animated.Value(0));
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
   useEffect(() => {
     loadSessionData();
@@ -71,33 +81,6 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
-  const handleDownload = async () => {
-    try {
-      const imageUrl = getImageUrl();
-      if (!imageUrl) {
-        Alert.alert('Error', 'No image available to download');
-        return;
-      }
-
-      // Extract filename from sessionData or use a default
-      const filename = sessionData?.generatedImage?.filename || 'upcrib-design.jpg';
-      
-      if (Platform.OS === 'ios') {
-        // For iOS, open the image URL directly - iOS will handle the download
-        await Linking.openURL(imageUrl);
-      } else {
-        // For Android, we would need react-native-fs for file downloads
-        // For now, open the URL in browser
-        await Linking.openURL(imageUrl);
-      }
-      
-      Alert.alert('Download', 'Image download initiated. Check your device\'s download folder.');
-    } catch (error) {
-      console.error('Download failed:', error);
-      Alert.alert('Error', 'Failed to download image. Please try again.');
-    }
-  };
-
   const handleShare = async () => {
     try {
       const imageUrl = getImageUrl();
@@ -105,58 +88,41 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
         Alert.alert('Error', 'No image available to share');
         return;
       }
-
-      // Show share options
-      Alert.alert(
-        'Share Your Design',
-        'How would you like to share your renovation design?',
-        [
-          {
-            text: 'Message/SMS',
-            onPress: async () => {
-              try {
-                const shareMessage = `Check out my AI-generated renovation design from upCrib! ${imageUrl}`;
-                const smsUrl = `sms:?&body=${encodeURIComponent(shareMessage)}`;
-                await Linking.openURL(smsUrl);
-              } catch (error) {
-                Alert.alert('Error', 'Could not open messaging app');
-              }
-            }
-          },
-          {
-            text: 'Email',
-            onPress: async () => {
-              try {
-                const subject = 'My upCrib Renovation Design';
-                const body = `Check out my AI-generated renovation design!\n\nView the design here: ${imageUrl}\n\nGenerated with upCrib - AI-powered home renovation designs.`;
-                const emailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-                await Linking.openURL(emailUrl);
-              } catch (error) {
-                Alert.alert('Error', 'Could not open email app');
-              }
-            }
-          },
-          {
-            text: 'Copy Link',
-            onPress: () => {
-              Alert.alert(
-                'Design Link', 
-                'Copy this link to share your design:\n\n' + imageUrl,
-                [
-                  { text: 'OK', style: 'default' }
-                ]
-              );
-            }
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel'
-          }
-        ]
-      );
+      setShowShareModal(true);
     } catch (error) {
       console.error('Share failed:', error);
       Alert.alert('Error', 'Failed to share design. Please try again.');
+    }
+  };
+
+  const shareVia = async (method: 'sms' | 'email' | 'copy') => {
+    const imageUrl = getImageUrl();
+    if (!imageUrl) return;
+
+    try {
+      switch (method) {
+        case 'sms':
+          const shareMessage = `Check out my AI-generated renovation design from upCrib! ${imageUrl}`;
+          const smsUrl = `sms:?&body=${encodeURIComponent(shareMessage)}`;
+          await Linking.openURL(smsUrl);
+          break;
+        case 'email':
+          const subject = 'My upCrib Renovation Design';
+          const body = `Check out my AI-generated renovation design!\n\nView the design here: ${imageUrl}\n\nGenerated with upCrib - AI-powered home renovation designs.`;
+          const emailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+          await Linking.openURL(emailUrl);
+          break;
+        case 'copy':
+          Alert.alert(
+            'Design Link', 
+            'Copy this link to share your design:\n\n' + imageUrl,
+            [{ text: 'OK', style: 'default' }]
+          );
+          break;
+      }
+      setShowShareModal(false);
+    } catch (error) {
+      Alert.alert('Error', 'Could not open the selected app');
     }
   };
 
@@ -172,13 +138,37 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleEditAnswers = () => {
     setEditMode(true);
     setUpdatedAnswers({ ...answers });
-    // Ensure questions section is expanded when entering edit mode
-    setShowQuestions(true);
+    setCurrentQuestionIndex(0); // Reset to first question
+    setShowEditModal(true);
+    // Animate modal in
+    Animated.spring(slideAnimation, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handleCancelEdit = () => {
     setEditMode(false);
     setUpdatedAnswers({ ...answers });
+    setCurrentQuestionIndex(0); // Reset question index
+    setShowEditModal(false);
+    // Animate modal out
+    Animated.spring(slideAnimation, {
+      toValue: 0,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleNextQuestion = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
+  };
+
+  const handlePreviousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
   };
 
   const handleAnswerChange = (questionId: string, value: string) => {
@@ -207,6 +197,13 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
       // Update local state
       setAnswers({ ...updatedAnswers });
       setEditMode(false);
+      setShowEditModal(false);
+      
+      // Animate modal out
+      Animated.spring(slideAnimation, {
+        toValue: 0,
+        useNativeDriver: true,
+      }).start();
       
       // Reload session data to get new generated image
       await loadSessionData();
@@ -253,247 +250,279 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   }
 
-  const imageUrl = getImageUrl();
-
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Your Design is Ready!</Text>
-          <Text style={styles.subtitle}>
-            Here's your AI-generated renovation design
-          </Text>
+      <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
+      
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading your results...</Text>
         </View>
-
-        {/* Before & After Comparison */}
-        {originalImageUrl ? (
-          <View style={styles.comparisonSection}>
-            <Text style={styles.comparisonTitle}>Before & After</Text>
-            
-            {/* Original Image */}
-            <View style={[styles.imageContainer, styles.comparisonImageContainer]}>
-              <Text style={styles.imageLabel}>Original</Text>
-              <Image 
-                source={{ uri: `${apiClient.apiBaseURL}${originalImageUrl}` }} 
-                style={styles.image}
-                resizeMode="cover"
-                onLoad={() => console.log('Original image loaded successfully from:', `${apiClient.apiBaseURL}${originalImageUrl}`)}
-                onError={(error) => console.log('Original image failed to load:', error.nativeEvent.error)}
-              />
-            </View>
-
-            {/* Generated Image */}
-            <View style={[styles.imageContainer, styles.comparisonImageContainer]}>
-              <Text style={styles.imageLabel}>AI-Generated Design</Text>
-              {imageUrl ? (
-                <Image 
-                  source={{ uri: imageUrl }} 
-                  style={styles.image}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.placeholderImage}>
-                  <Text style={styles.placeholderText}>No generated image available</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        ) : (
-          // Show only generated image when original is not available
-          <View style={styles.imageContainer}>
-            <Text style={styles.imageLabel}>Generated Design</Text>
-            {imageUrl ? (
-              <Image 
-                source={{ uri: imageUrl }} 
-                style={styles.image}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={styles.placeholderImage}>
-                <Text style={styles.placeholderText}>No image available</Text>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadSessionData}>
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.homeButton} onPress={handleStartNew}>
+            <Text style={styles.homeButtonText}>Start New Design</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          {/* Main Content */}
+          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+            {/* Hero Section */}
+            <View style={styles.heroSection}>
+              <View style={styles.heroContent}>
+               {/*  <Text style={styles.heroTitle}>Design Ready</Text> */}
+                <Text style={styles.heroSubtitle}>Your AI-generated renovation</Text>
               </View>
-            )}
-          </View>
-        )}
-
-        {/* Image Info */}
-        {sessionData?.generatedImage && (
-          <View style={styles.imageInfo}>
-            <Text style={styles.imageInfoText}>
-              Generated on {new Date(sessionData.generatedImage.generatedAt).toLocaleDateString()}
-            </Text>
-          </View>
-        )}
-
-        {/* Action Buttons */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity 
-            style={styles.downloadButton}
-            onPress={handleDownload}
-          >
-            <Text style={styles.downloadButtonText}>Download Image</Text>
-          </TouchableOpacity>
-
-
-          <TouchableOpacity 
-            style={styles.shareButton}
-            onPress={handleShare}
-          >
-            <Text style={styles.shareButtonText}>Share Design</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Session Summary */}
-        {sessionData && (
-          <View style={styles.summaryContainer}>
-            <Text style={styles.summaryTitle}>Design Session Summary</Text>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Questions Answered:</Text>
-              <Text style={styles.summaryValue}>{sessionData.questionsAnswered} of {sessionData.totalQuestions}</Text>
             </View>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Status:</Text>
-              <Text style={[styles.summaryValue, styles.statusCompleted]}>Completed</Text>
-            </View>
-{/*             <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Created:</Text>
-              <Text style={styles.summaryValue}>{new Date(sessionData.createdAt).toLocaleDateString()}</Text>
-            </View> */}
-          </View>
-        )}
 
-        {/* Questions and Answers Section */}
-        <View style={styles.questionsContainer}>
-          <TouchableOpacity 
-            style={styles.questionsToggle}
-            onPress={toggleQuestions}
-          >
-            <Text style={styles.questionsToggleTitle}>
-              Design Questions & Preferences
-            </Text>
-            <Text style={styles.questionsToggleText}>
-              {showQuestions ? 'Hide' : 'Show'} questions
-            </Text>
-            <Text style={styles.questionsToggleIcon}>
-              {showQuestions ? '▲' : '▼'}
-            </Text>
-          </TouchableOpacity>
-
-          {showQuestions && (
-            <View style={styles.questionsContent}>
-              {questions.length > 0 ? (
-                <>
-{/*                   <Text style={styles.questionsDescription}>
-                    These are the design preference questions you answered to generate your renovation:
-                  </Text> */}
-
-                  {/* Edit Mode Controls */}
-                  {!editMode ? (
-                    <View style={styles.editControlsContainer}>
-                      <TouchableOpacity 
-                        style={styles.downloadButton}
-                        onPress={handleEditAnswers}
-                      >
-                        <Text style={styles.downloadButtonText}>✏️ Edit Answers & Regenerate</Text>
-                      </TouchableOpacity>
+            {/* Image Display Card */}
+            <View style={styles.imageCard}>
+              {originalImageUrl ? (
+                // Before & After Layout
+                <View style={styles.beforeAfterContainer}>
+                  <Text style={styles.comparisonLabel}>Before & After</Text>
+                  <View style={styles.imageRow}>
+                    <View style={styles.imageColumn}>
+                      <Text style={styles.imageTitle}>Original</Text>
+                      <Image 
+                        source={{ uri: `${apiClient.apiBaseURL}${originalImageUrl}` }} 
+                        style={styles.comparisonImage}
+                        resizeMode="cover"
+                      />
                     </View>
-                  ) : (
-                    <View style={styles.editControlsContainer}>
-                      <Text style={styles.editModeTitle}>✏️ Edit Mode Active</Text>
-                      <Text style={styles.editModeInstructions}>
-                        Change preferences and regenerate
-                      </Text>
-                      <View style={styles.editActionsRow}>
-                        <TouchableOpacity 
-                          style={styles.cancelButton}
-                          onPress={handleCancelEdit}
-                          disabled={regenerating}
-                        >
-                          <Text style={styles.cancelButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={[styles.saveButton, regenerating && styles.saveButtonDisabled]}
-                          onPress={handleSaveAndRegenerate}
-                          disabled={regenerating}
-                        >
-                          {regenerating ? (
-                            <ActivityIndicator size="small" color="#FFFFFF" />
-                          ) : (
-                            <Text style={styles.saveButtonText}>Save & Regenerate</Text>
-                          )}
-                        </TouchableOpacity>
-                      </View>
+                    <View style={styles.imageColumn}>
+                      <Text style={styles.imageTitle}>AI Design</Text>
+                      {getImageUrl() ? (
+                        <Image 
+                          source={{ uri: getImageUrl()! }} 
+                          style={styles.comparisonImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.placeholderImage}>
+                          <Text style={styles.placeholderText}>No image</Text>
+                        </View>
+                      )}
                     </View>
-                  )}
-                </>
+                  </View>
+                </View>
               ) : (
-                <View style={styles.noQuestionsContainer}>
-                  <Text style={styles.noQuestionsText}>
-                    No design questions available yet. Questions will appear here once the design process is complete.
-                  </Text>
-                  {/* Still allow edit mode for testing */}
-                  {!editMode ? (
-                    <TouchableOpacity 
-                      style={styles.downloadButton}
-                      onPress={handleEditAnswers}
-                    >
-                      <Text style={styles.downloadButtonText}>✏️ Test Edit Mode</Text>
-                    </TouchableOpacity>
+                // Single Image Layout
+                <View style={styles.singleImageContainer}>
+                  <Text style={styles.imageTitle}>Your Generated Design</Text>
+                  {getImageUrl() ? (
+                    <Image 
+                      source={{ uri: getImageUrl()! }} 
+                      style={styles.mainImage}
+                      resizeMode="cover"
+                    />
                   ) : (
-                    <View style={styles.editControlsContainer}>
-                      <Text style={styles.editModeTitle}>✏️ Edit Mode Active (Test)</Text>
-                      <View style={styles.editActionsRow}>
-                        <TouchableOpacity 
-                          style={styles.cancelButton}
-                          onPress={handleCancelEdit}
-                        >
-                          <Text style={styles.cancelButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={styles.saveButton}
-                          onPress={handleSaveAndRegenerate}
-                        >
-                          <Text style={styles.saveButtonText}>Save & Regenerate</Text>
-                        </TouchableOpacity>
-                      </View>
+                    <View style={styles.placeholderImage}>
+                      <Text style={styles.placeholderText}>No image available</Text>
                     </View>
                   )}
                 </View>
               )}
+            </View>
 
-              {/* Show questions if available */}
-              {questions.length > 0 && (
-                <>
-                  <Text style={styles.questionsDescription}>
-                    These are the design preference questions you answered to generate your renovation:
-                  </Text>
+            {/* Quick Actions Bar - Compact Horizontal */}
+            <View style={styles.actionsBar}>
+              <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+                <Text style={styles.actionButtonText} numberOfLines={1}>Share</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.actionButton} onPress={handleEditAnswers}>
+                <Text style={styles.actionButtonText} numberOfLines={1}>Edit</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.actionButton} onPress={() => setShowInfoModal(true)}>
+                <Text style={styles.actionButtonText} numberOfLines={1}>Info</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Bottom Spacing */}
+            <View style={styles.bottomSpacing} />
+          </ScrollView>
+
+          {/* Floating New Design Button */}
+          <View style={styles.floatingButton}>
+            <TouchableOpacity style={styles.newDesignButton} onPress={handleStartNew}>
+              <Text style={styles.newDesignIcon}>✨</Text>
+              <Text style={styles.newDesignText}>Create New Design</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Share Modal */}
+          <Modal
+            visible={showShareModal}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowShareModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.shareModal}>
+                <Text style={styles.modalTitle}>Share Your Design</Text>
+                <Text style={styles.modalSubtitle}>Choose how to share your renovation</Text>
+                
+                <View style={styles.shareOptions}>
+                  <TouchableOpacity style={styles.shareOption} onPress={() => shareVia('sms')}>
+                    <Text style={styles.shareIcon}>💬</Text>
+                    <Text style={styles.shareOptionText}>Message</Text>
+                  </TouchableOpacity>
                   
-                  {questions.map((question, index) => (
-                    <View key={question.id} style={styles.questionItem}>
-                      <Text style={styles.questionText}>
-                        {index + 1}. {question.prompt}
-                      </Text>
-                      
-                      {/* Edit mode - show input fields */}
-                      {editMode ? (
-                        <View style={styles.editAnswerContainer}>
-                          {question.type === 'multiple_choice' ? (
+                  <TouchableOpacity style={styles.shareOption} onPress={() => shareVia('email')}>
+                    <Text style={styles.shareIcon}>📧</Text>
+                    <Text style={styles.shareOptionText}>Email</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={styles.shareOption} onPress={() => shareVia('copy')}>
+                    <Text style={styles.shareIcon}>🔗</Text>
+                    <Text style={styles.shareOptionText}>Copy Link</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <TouchableOpacity 
+                  style={styles.modalCloseButton} 
+                  onPress={() => setShowShareModal(false)}
+                >
+                  <Text style={styles.modalCloseText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
+          {/* Edit Modal */}
+          <Modal
+            visible={showEditModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={handleCancelEdit}
+          >
+            <View style={styles.modalOverlay}>
+              <Animated.View 
+                style={[
+                  styles.editModal,
+                  {
+                    transform: [{
+                      translateY: slideAnimation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [600, 0],
+                      })
+                    }]
+                  }
+                ]}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Edit Preferences</Text>
+                  <TouchableOpacity onPress={handleCancelEdit}>
+                    <Text style={styles.modalCloseIcon}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                {/* Before & After Reference Images */}
+                <View style={styles.editImageReference}>
+                  <View style={styles.editImageRow}>
+                    {originalImageUrl && (
+                      <View style={styles.editImageColumn}>
+                        <Text style={styles.editImageLabel}>Original</Text>
+                        <Image 
+                          source={{ uri: `${apiClient.apiBaseURL}${originalImageUrl}` }} 
+                          style={styles.editReferenceImage}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    )}
+                    <View style={styles.editImageColumn}>
+                      <Text style={styles.editImageLabel}>Current Design</Text>
+                      {getImageUrl() ? (
+                        <Image 
+                          source={{ uri: getImageUrl()! }} 
+                          style={styles.editReferenceImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.editPlaceholderImage}>
+                          <Text style={styles.editPlaceholderText}>No image</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </View>
+                
+                {/* Question Navigation - Single Question Display */}
+                <View style={styles.editQuestionContainer}>
+                  {questions.length > 0 ? (
+                    <>
+                      {/* Question Counter and Navigation */}
+                      <View style={styles.questionNavigation}>
+                        <TouchableOpacity 
+                          style={[styles.navArrow, currentQuestionIndex === 0 && styles.navArrowDisabled]}
+                          onPress={handlePreviousQuestion}
+                          disabled={currentQuestionIndex === 0}
+                        >
+                          <Text style={[styles.navArrowText, currentQuestionIndex === 0 && styles.navArrowTextDisabled]}>
+                            ← Previous
+                          </Text>
+                        </TouchableOpacity>
+                        
+                        <View style={styles.questionInfo}>
+                          <Text style={styles.questionCounterText}>
+                            {currentQuestionIndex + 1} of {questions.length}
+                          </Text>
+                          {/* Progress Dots */}
+                          <View style={styles.progressDots}>
+                            {questions.map((question, index) => (
+                              <View
+                                key={question.id}
+                                style={[
+                                  styles.progressDot,
+                                  index === currentQuestionIndex && styles.progressDotActive,
+                                  updatedAnswers[question.id] && styles.progressDotAnswered
+                                ]}
+                              />
+                            ))}
+                          </View>
+                        </View>
+                        
+                        <TouchableOpacity 
+                          style={[styles.navArrow, currentQuestionIndex === questions.length - 1 && styles.navArrowDisabled]}
+                          onPress={handleNextQuestion}
+                          disabled={currentQuestionIndex === questions.length - 1}
+                        >
+                          <Text style={[styles.navArrowText, currentQuestionIndex === questions.length - 1 && styles.navArrowTextDisabled]}>
+                            Next →
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Current Question */}
+                      {questions[currentQuestionIndex] && (
+                        <ScrollView style={styles.currentQuestionCard} showsVerticalScrollIndicator={false}>
+                          <Text style={styles.currentQuestionText}>
+                            {questions[currentQuestionIndex].prompt}
+                          </Text>
+                          
+                          {questions[currentQuestionIndex].type === 'multiple_choice' ? (
                             <View style={styles.editOptionsContainer}>
-                              <Text style={styles.editLabel}>Select your answer:</Text>
-                              {question.options?.map((option: string, optionIndex: number) => (
+                              {questions[currentQuestionIndex].options?.map((option: string, optionIndex: number) => (
                                 <TouchableOpacity
                                   key={optionIndex}
                                   style={[
                                     styles.editOptionButton,
-                                    updatedAnswers[question.id] === option && styles.editOptionButtonSelected
+                                    updatedAnswers[questions[currentQuestionIndex].id] === option && styles.editOptionSelected
                                   ]}
-                                  onPress={() => handleAnswerChange(question.id, option)}
+                                  onPress={() => handleAnswerChange(questions[currentQuestionIndex].id, option)}
                                 >
                                   <Text style={[
                                     styles.editOptionText,
-                                    updatedAnswers[question.id] === option && styles.editOptionTextSelected
+                                    updatedAnswers[questions[currentQuestionIndex].id] === option && styles.editOptionTextSelected
                                   ]}>
                                     {option}
                                   </Text>
@@ -501,80 +530,99 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
                               ))}
                             </View>
                           ) : (
-                            <View style={styles.editTextContainer}>
-                              <Text style={styles.editLabel}>Your answer:</Text>
-                              <TextInput
-                                style={styles.editTextInput}
-                                value={updatedAnswers[question.id] || ''}
-                                onChangeText={(text) => handleAnswerChange(question.id, text)}
-                                placeholder="Type your answer here..."
-                                multiline={true}
-                                textAlignVertical="top"
-                              />
-                            </View>
+                            <TextInput
+                              style={styles.editTextInput}
+                              value={updatedAnswers[questions[currentQuestionIndex].id] || ''}
+                              onChangeText={(text) => handleAnswerChange(questions[currentQuestionIndex].id, text)}
+                              placeholder="Enter your preference..."
+                              multiline={true}
+                              textAlignVertical="top"
+                            />
                           )}
-                        </View>
-                      ) : (
-                        // View mode - show current answers
-                        <>
-                          {/* Show the user's selected answer if available */}
-                          {answers[question.id] && (
-                            <View style={styles.selectedAnswerContainer}>
-                              <Text style={styles.selectedAnswerLabel}>Your answer:</Text>
-                              <Text style={styles.selectedAnswerText}>
-                                {answers[question.id]}
-                              </Text>
-                            </View>
-                          )}
-                          
-                          {/* Show options for multiple choice questions */}
-                          {question.type === 'multiple_choice' && question.options && question.options.length > 0 && (
-                            <View style={styles.optionsContainer}>
-                              <Text style={styles.optionsLabel}>
-                                {answers[question.id] ? 'All options were:' : 'Available options were:'}
-                              </Text>
-                              {question.options.map((option: string, optionIndex: number) => (
-                                <Text 
-                                  key={optionIndex} 
-                                  style={[
-                                    styles.optionText,
-                                    answers[question.id] === option && styles.optionTextSelected
-                                  ]}
-                                >
-                                  {answers[question.id] === option ? '✓ ' : '• '}{option}
-                                </Text>
-                              ))}
-                            </View>
-                          )}
-
-                          {/* Show note if no answer data available */}
-                          {!answers[question.id] && Object.keys(answers).length === 0 && (
-                            <View style={styles.noAnswerNote}>
-                              <Text style={styles.noAnswerText}>
-                                You provided an answer to this question during the design process.
-                              </Text>
-                            </View>
-                          )}
-                        </>
+                        </ScrollView>
                       )}
+                    </>
+                  ) : (
+                    <View style={styles.noQuestionsCard}>
+                      <Text style={styles.noQuestionsText}>
+                        No questions available yet. This feature will be available once design questions are loaded.
+                      </Text>
                     </View>
-                  ))}
-                </>
-              )}
+                  )}
+                </View>
+                
+                <View style={styles.editActions}>
+                  <TouchableOpacity 
+                    style={styles.editCancelButton} 
+                    onPress={handleCancelEdit}
+                    disabled={regenerating}
+                  >
+                    <Text style={styles.editCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.editSaveButton, regenerating && styles.editSaveDisabled]} 
+                    onPress={handleSaveAndRegenerate}
+                    disabled={regenerating}
+                  >
+                    {regenerating ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.editSaveText}>Save & Regenerate</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
             </View>
-          )}
-        </View>
-      </ScrollView>
+          </Modal>
 
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <TouchableOpacity 
-          style={styles.newDesignButton}
-          onPress={handleStartNew}
-        >
-          <Text style={styles.newDesignButtonText}>Create New Design</Text>
-        </TouchableOpacity>
-      </View>
+          {/* Info Modal */}
+          <Modal
+            visible={showInfoModal}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowInfoModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.infoModal}>
+                <Text style={styles.modalTitle}>Design Details</Text>
+                
+                {sessionData && (
+                  <View style={styles.infoContent}>
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>Status:</Text>
+                      <Text style={styles.infoValue}>Completed ✅</Text>
+                    </View>
+                    
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>Questions Answered:</Text>
+                      <Text style={styles.infoValue}>
+                        {sessionData.questionsAnswered} of {sessionData.totalQuestions}
+                      </Text>
+                    </View>
+                    
+                    {sessionData.generatedImage && (
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Generated:</Text>
+                        <Text style={styles.infoValue}>
+                          {new Date(sessionData.generatedImage.generatedAt).toLocaleDateString()}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+                
+                <TouchableOpacity 
+                  style={styles.modalCloseButton} 
+                  onPress={() => setShowInfoModal(false)}
+                >
+                  <Text style={styles.modalCloseText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        </>
+      )}
     </View>
   );
 };
@@ -582,7 +630,7 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#1a1a1a',
   },
   scrollView: {
     flex: 1,
@@ -591,29 +639,29 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#1a1a1a',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: '#FFFFFF',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#1a1a1a',
   },
   errorTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1C1C1E',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   errorText: {
     fontSize: 16,
-    color: '#666',
+    color: '#999',
     textAlign: 'center',
     marginBottom: 24,
   },
@@ -621,7 +669,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 12,
   },
   retryButtonText: {
@@ -630,522 +678,538 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   homeButton: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: '#2a2a2a',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   homeButtonText: {
     color: '#007AFF',
     fontSize: 16,
     fontWeight: '600',
   },
-  header: {
-    padding: 20,
+
+  // Hero Section
+  heroSection: {
     paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  heroContent: {
     alignItems: 'center',
   },
-  title: {
-    fontSize: 28,
+  heroTitle: {
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#1C1C1E',
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 8,
   },
-  subtitle: {
+  heroSubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#999',
     textAlign: 'center',
   },
-  imageContainer: {
-    alignItems: 'center',
+
+  // Image Card
+  imageCard: {
+    backgroundColor: '#2a2a2a',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 20,
     padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  imageLabel: {
+  beforeAfterContainer: {
+    alignItems: 'center',
+  },
+  comparisonLabel: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 12,
+    color: '#FFFFFF',
+    marginBottom: 16,
     textAlign: 'center',
   },
-  image: {
-    width: imageSize,
-    height: imageSize,
+  imageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  imageColumn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  imageTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#999',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  comparisonImage: {
+    width: (width - 72) / 2, // Account for padding and gap
+    height: (width - 72) / 2,
+    borderRadius: 12,
+    backgroundColor: '#3a3a3a',
+  },
+  singleImageContainer: {
+    alignItems: 'center',
+  },
+  mainImage: {
+    width: width - 80,
+    height: width - 80,
     borderRadius: 16,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: '#3a3a3a',
   },
   placeholderImage: {
-    width: imageSize,
-    height: imageSize,
-    borderRadius: 16,
-    backgroundColor: '#F2F2F7',
+    width: (width - 72) / 2,
+    height: (width - 72) / 2,
+    borderRadius: 12,
+    backgroundColor: '#3a3a3a',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#E5E5EA',
+    borderColor: '#4a4a4a',
     borderStyle: 'dashed',
   },
   placeholderText: {
-    fontSize: 16,
-    color: '#999',
-  },
-  imageInfo: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  imageInfoText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
+    textAlign: 'center',
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    padding: 20,
-    gap: 12,
-  },
-  downloadButton: {
-    flex: 1,
-    backgroundColor: '#007AFF',
+
+  // Actions Bar - Modern Card Design
+  actionsBar: {
+    backgroundColor: '#2a2a2a',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 20,
+    paddingHorizontal: 20,
     paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#3a3a3a',
+  },
+  actionButton: {
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    flex: 1,
+    marginHorizontal: 4,
+    justifyContent: 'center',
+    height: 44,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#0066CC',
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+
+  // Floating Button - Made smaller and less intrusive
+  floatingButton: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+  },
+  newDesignButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 16,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  newDesignIcon: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  newDesignText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+
+  // Share Modal
+  shareModal: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 320,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom:1,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  shareOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 24,
+  },
+  shareOption: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: '#3a3a3a',
+    minWidth: 80,
+  },
+  shareIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  shareOptionText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  modalCloseButton: {
+    backgroundColor: '#4a4a4a',
+    paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
   },
-  downloadButtonText: {
+  modalCloseText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
-  shareButton: {
+
+  // Edit Modal
+  editModal: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 20,
+    width: '100%',
+    maxHeight: '90%', // Increased from 85%
+    marginTop: '10%', // Reduced from 15%
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#007AFF',
-    paddingVertical: 16,
-    borderRadius: 12,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3a3a3a',
+  },
+  modalCloseIcon: {
+    fontSize: 18,
+    color: '#999',
+    fontWeight: 'bold',
+  },
+  
+  // Edit Modal Reference Images
+  editImageReference: {
+    backgroundColor: '#1a1a1a',
+    paddingHorizontal: 20,
+    paddingVertical: 12, // Reduced from 16
+    borderBottomWidth: 1,
+    borderBottomColor: '#3a3a3a',
+  },
+  editReferenceTitle: {
+    fontSize: 12, // Reduced from 14
+    fontWeight: '600',
+    color: '#999',
+    marginBottom: 8, // Reduced from 12
+    textAlign: 'center',
+  },
+  editImageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: 12,
+  },
+  editImageColumn: {
+    flex: 1,
     alignItems: 'center',
   },
-  shareButtonText: {
-    color: '#007AFF',
-    fontSize: 16,
+  editImageLabel: {
+    fontSize: 12,
     fontWeight: '600',
+    color: '#999',
+    marginBottom: 6,
+    textAlign: 'center',
   },
-  summaryContainer: {
-    margin: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+  editReferenceImage: {
+    width: (width - 84) / 2, // Responsive width
+    height: 60, // Reduced from 80
+    borderRadius: 8,
+    backgroundColor: '#3a3a3a',
+  },
+  editPlaceholderImage: {
+    width: (width - 84) / 2,
+    height: 60, // Reduced from 80
+    borderRadius: 8,
+    backgroundColor: '#3a3a3a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#4a4a4a',
+    borderStyle: 'dashed',
+  },
+  editPlaceholderText: {
+    fontSize: 10,
+    color: '#666',
+    textAlign: 'center',
+  },
+  
+  // Question Navigation Container
+  editQuestionContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    minHeight: 200, // Ensure minimum space for questions
+  },
+  questionNavigation: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  navArrow: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#007AFF',
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  navArrowDisabled: {
+    backgroundColor: '#4a4a4a',
+    opacity: 0.5,
+  },
+  navArrowText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  navArrowTextDisabled: {
+    color: '#999',
+  },
+  questionCounter: {
+    backgroundColor: '#3a3a3a',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  questionInfo: {
+    alignItems: 'center',
+  },
+  progressDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 8,
+    gap: 6,
+  },
+  progressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4a4a4a',
+  },
+  progressDotActive: {
+    backgroundColor: '#007AFF',
+    transform: [{ scale: 1.2 }],
+  },
+  progressDotAnswered: {
+    backgroundColor: '#34C759',
+  },
+  questionCounterText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  currentQuestionCard: {
+    backgroundColor: '#3a3a3a',
+    borderRadius: 12,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    flex: 1,
+    minHeight: 150, // Ensure space for content
+    // Removed maxHeight to allow full expansion
   },
-  summaryTitle: {
+  currentQuestionText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 16,
+    color: '#FFFFFF',
+    marginBottom: 20,
+    lineHeight: 24,
   },
-  summaryItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  summaryLabel: {
-    fontSize: 16,
-    color: '#666',
-  },
-  summaryValue: {
-    fontSize: 16,
-    color: '#1C1C1E',
-    fontWeight: '500',
-  },
-  statusCompleted: {
-    color: '#34C759',
-  },
-  bottomActions: {
+  
+  editContent: {
     padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
+    // Removed maxHeight to allow full expansion to available space
   },
-  newDesignButton: {
-    backgroundColor: '#F2F2F7',
-    paddingVertical: 16,
+  editQuestionCard: {
+    backgroundColor: '#3a3a3a',
     borderRadius: 12,
-    alignItems: 'center',
+    padding: 12, // Reduced from 16
+    marginBottom: 12, // Reduced from 16
   },
-  newDesignButtonText: {
-    color: '#007AFF',
-    fontSize: 16,
+  editQuestionText: {
+    fontSize: 14, // Reduced from 16
     fontWeight: '600',
-  },
-  questionsContainer: {
-    margin: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    overflow: 'hidden',
-  },
-  questionsToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    backgroundColor: '#F8F9FA',
-  },
-  questionsToggleTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    flex: 1,
-  },
-  questionsToggleText: {
-    fontSize: 14,
-    color: '#007AFF',
-    marginRight: 8,
-  },
-  questionsToggleIcon: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: 'bold',
-  },
-  questionsContent: {
-    padding: 20,
-    paddingTop: 0,
-  },
-  questionItem: {
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  questionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 8,
-    lineHeight: 22,
-  },
-  answerText: {
-    fontSize: 15,
-    color: '#666',
-    lineHeight: 20,
-    paddingLeft: 16,
-  },
-  questionsDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 20,
-    lineHeight: 20,
-    fontStyle: 'italic',
-  },
-  optionsContainer: {
-    marginTop: 8,
-    paddingLeft: 16,
-  },
-  optionsLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 4,
-  },
-  optionText: {
-    fontSize: 14,
-    color: '#888',
-    lineHeight: 18,
-    marginBottom: 2,
-  },
-  selectedAnswerContainer: {
-    backgroundColor: '#E3F2FD',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 8,
-    marginBottom: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#007AFF',
-  },
-  selectedAnswerLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#007AFF',
-    marginBottom: 4,
-  },
-  selectedAnswerText: {
-    fontSize: 15,
-    color: '#1C1C1E',
-    fontWeight: '500',
-    lineHeight: 20,
-  },
-  optionTextSelected: {
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  noAnswerNote: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 6,
-    padding: 10,
-    marginTop: 8,
-    borderLeftWidth: 2,
-    borderLeftColor: '#E5E5EA',
-  },
-  noAnswerText: {
-    fontSize: 13,
-    color: '#666',
-    fontStyle: 'italic',
-    lineHeight: 18,
-  },
-  comparisonSection: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
-    paddingTop: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  comparisonTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1C1C1E',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  comparisonImageContainer: {
-    paddingBottom: 15,
-    paddingTop: 10,
-  },
-  debugText: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 5,
-    fontFamily: 'monospace',
-  },
-  debugContainer: {
-    backgroundColor: '#FFF3CD',
-    padding: 20,
-    margin: 20,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FFEAA7',
-  },
-  debugTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#856404',
-    marginBottom: 10,
-  },
-  // Edit mode styles
-  editControlsContainer: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  editButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  editCancelButton: {
-    backgroundColor: '#8E8E93',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  editSaveButton: {
-    backgroundColor: '#34C759',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  editButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  editAnswerContainer: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#007AFF',
+    color: '#FFFFFF',
+    marginBottom: 8, // Reduced from 12
   },
   editOptionsContainer: {
-    marginTop: 4,
-  },
-  editTextContainer: {
-    marginTop: 4,
-  },
-  editLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    gap: 6, // Reduced from 8
   },
   editOptionButton: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
+    backgroundColor: '#4a4a4a',
+    paddingVertical: 10, // Reduced from 12
+    paddingHorizontal: 14, // Reduced from 16
     borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginVertical: 4,
+    borderWidth: 1,
+    borderColor: '#5a5a5a',
   },
-  editOptionButtonSelected: {
+  editOptionSelected: {
     backgroundColor: '#007AFF',
     borderColor: '#007AFF',
   },
   editOptionText: {
-    fontSize: 16,
-    color: '#374151',
+    fontSize: 14,
+    color: '#FFFFFF',
   },
   editOptionTextSelected: {
-    color: 'white',
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   editTextInput: {
-    backgroundColor: 'white',
+    backgroundColor: '#4a4a4a',
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#5a5a5a',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    fontSize: 16,
+    fontSize: 14,
+    color: '#FFFFFF',
     minHeight: 80,
+    maxHeight: 120, // Prevent overflow
     textAlignVertical: 'top',
   },
-  editModeTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  editModeInstructions: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 12,
-    fontStyle: 'italic',
-  },
-  editActionsRow: {
+  editActions: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#3a3a3a',
     gap: 12,
-    marginTop: 16,
-    width: '100%',
   },
-  cancelButton: {
-    backgroundColor: '#8E8E93',
-    paddingHorizontal: 24,
+  editCancelButton: {
+    flex: 1,
+    backgroundColor: '#4a4a4a',
     paddingVertical: 12,
-    borderRadius: 8,
-    minWidth: 100,
+    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  cancelButtonText: {
-    color: 'white',
+  editCancelText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
-  saveButton: {
-    backgroundColor: '#34C759',
-    paddingHorizontal: 24,
+  editSaveButton: {
+    flex: 2,
+    backgroundColor: '#007AFF',
     paddingVertical: 12,
-    borderRadius: 8,
-    minWidth: 150,
+    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  saveButtonDisabled: {
-    backgroundColor: '#A3A3A3',
+  editSaveDisabled: {
+    backgroundColor: '#666',
   },
-  saveButtonText: {
-    color: 'white',
+  editSaveText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
-  editDesignButton: {
-    backgroundColor: '#FF6B35',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginVertical: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  editDesignButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  noQuestionsContainer: {
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    marginTop: 12,
+  noQuestionsCard: {
+    backgroundColor: '#3a3a3a',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
   },
   noQuestionsText: {
     fontSize: 14,
-    color: '#666',
+    color: '#999',
     textAlign: 'center',
-    marginBottom: 12,
+    lineHeight: 20,
   },
-  debugSaveButton: {
-    backgroundColor: '#FF0000',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginVertical: 4,
-    alignSelf: 'center',
-    minWidth: 250,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+
+  // Info Modal
+  infoModal: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 320,
   },
-  debugSaveButtonText: {
-    color: 'white',
-    fontSize: 16,
+  infoContent: {
+    marginBottom: 24,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#999',
+  },
+  infoValue: {
+    fontSize: 14,
+    color: '#FFFFFF',
     fontWeight: '600',
-    textAlign: 'center',
   },
-  debugStatusContainer: {
-    backgroundColor: '#FFEB3B',
-    padding: 8,
-    marginBottom: 8,
-    borderRadius: 4,
-  },
-  debugStatusText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
+
+  // Spacing
+  bottomSpacing: {
+    height: 60, // Reduced space for floating button
   },
 });
 
