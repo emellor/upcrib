@@ -31,7 +31,14 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="Upload" component={UploadScreen} />
         <Stack.Screen name="Style" component={StyleScreen} />
         <Stack.Screen name="Design" component={DesignScreen} />
-        <Stack.Screen name="Result" component={ResultScreen} />
+        <Stack.Screen 
+          name="Result" 
+          component={ResultScreen}
+          options={{
+            gestureEnabled: false, // Disable swipe back gesture
+            headerLeft: () => null, // Remove back button
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

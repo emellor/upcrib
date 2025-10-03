@@ -16,6 +16,8 @@ import {
   Modal,
   Animated,
   StatusBar,
+  PanResponder,
+  BackHandler,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -53,9 +55,71 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [slideAnimation] = useState(new Animated.Value(0));
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  
+  // Before/After slider state
+  const [sliderPosition] = useState(new Animated.Value(0.5)); // Start at 50% (middle)
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Pan responder for the before/after slider
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: (evt, gestureState) => {
+      return true;
+    },
+    onMoveShouldSetPanResponder: (evt, gestureState) => {
+      // Only start moving if horizontal movement is greater than vertical
+      return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 5;
+    },
+    onPanResponderGrant: (evt, gestureState) => {
+      setIsDragging(true);
+    },
+    onPanResponderMove: (evt, gestureState) => {
+      const imageWidth = width - 40; // Account for padding
+      const touchX = evt.nativeEvent.locationX;
+      
+      // Calculate position based on touch location within the slider
+      const newPosition = Math.max(0, Math.min(1, touchX / imageWidth));
+      sliderPosition.setValue(newPosition);
+    },
+    onPanResponderRelease: (evt, gestureState) => {
+      setIsDragging(false);
+      
+      // Get final position and determine snap direction
+      const imageWidth = width - 40;
+      const touchX = evt.nativeEvent.locationX;
+      const currentPosition = Math.max(0, Math.min(1, touchX / imageWidth));
+      const velocity = gestureState.vx;
+      
+      // Snap to 0 or 1 based on position and velocity
+      let targetValue = currentPosition < 0.5 ? 0 : 1;
+      
+      // If velocity is significant, use velocity to determine direction
+      if (Math.abs(velocity) > 0.3) {
+        targetValue = velocity > 0 ? 1 : 0;
+      }
+      
+      // Animate to the target position
+      Animated.spring(sliderPosition, {
+        toValue: targetValue,
+        useNativeDriver: false,
+        tension: 100,
+        friction: 8,
+      }).start();
+    },
+    onPanResponderTerminationRequest: () => false,
+  });
 
   useEffect(() => {
     loadSessionData();
+  }, []);
+
+  // Prevent hardware back button on Android
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // Return true to prevent default back behavior
+      return true;
+    });
+
+    return () => backHandler.remove();
   }, []);
 
   const loadSessionData = async () => {
@@ -273,7 +337,12 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
       ) : (
         <>
           {/* Main Content */}
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.scrollView} 
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={!isDragging}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* Hero Section */}
             <View style={styles.heroSection}>
               <View style={styles.heroContent}>
@@ -285,32 +354,69 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Image Display Card */}
             <View style={styles.imageCard}>
               {originalImageUrl ? (
-                // Before & After Layout
+                // Interactive Before & After Slider
                 <View style={styles.beforeAfterContainer}>
                   <Text style={styles.comparisonLabel}>Before & After</Text>
-                  <View style={styles.imageRow}>
-                    <View style={styles.imageColumn}>
-                      <Text style={styles.imageTitle}>Original</Text>
-                      <Image 
-                        source={{ uri: `${apiClient.apiBaseURL}${originalImageUrl}` }} 
-                        style={styles.comparisonImage}
-                        resizeMode="cover"
-                      />
-                    </View>
-                    <View style={styles.imageColumn}>
-                      <Text style={styles.imageTitle}>AI Design</Text>
+                  <Text style={styles.sliderInstructions}>Drag to compare</Text>
+                  
+                  <View style={styles.sliderWrapper}>
+                    <View style={styles.sliderContainer} {...panResponder.panHandlers}>
+                    {/* After Image (AI Design) - Full Background */}
+                    <View style={styles.sliderImageContainer}>
                       {getImageUrl() ? (
                         <Image 
                           source={{ uri: getImageUrl()! }} 
-                          style={styles.comparisonImage}
+                          style={styles.sliderImage}
                           resizeMode="cover"
                         />
                       ) : (
-                        <View style={styles.placeholderImage}>
-                          <Text style={styles.placeholderText}>No image</Text>
+                        <View style={styles.sliderPlaceholder}>
+                          <Text style={styles.placeholderText}>No AI design</Text>
                         </View>
                       )}
+                      <View style={styles.imageLabel}>
+                        <Text style={styles.imageLabelText}>After</Text>
+                      </View>
                     </View>
+                    
+                    {/* Before Image (Original) - Masked Overlay */}
+                    <Animated.View style={[
+                      styles.sliderOverlay,
+                      {
+                        width: sliderPosition.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0%', '100%'],
+                        }),
+                      }
+                    ]}>
+                      <Image 
+                        source={{ uri: `${apiClient.apiBaseURL}${originalImageUrl}` }} 
+                        style={styles.sliderImage}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.imageLabel}>
+                        <Text style={styles.imageLabelText}>Before</Text>
+                      </View>
+                    </Animated.View>
+                    
+                    {/* Slider Handle */}
+                    <Animated.View style={[
+                      styles.sliderHandle,
+                      {
+                        left: sliderPosition.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0%', '100%'],
+                        }),
+                        transform: [{
+                          scale: isDragging ? 1.2 : 1.0
+                        }]
+                      }
+                    ]}>
+                      <View style={styles.sliderHandleInner}>
+                        <Text style={styles.sliderHandleIcon}>⟷</Text>
+                      </View>
+                    </Animated.View>
+                  </View>
                   </View>
                 </View>
               ) : (
@@ -731,30 +837,104 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  imageRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  imageColumn: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  imageTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#999',
     marginBottom: 8,
     textAlign: 'center',
   },
-  comparisonImage: {
-    width: (width - 72) / 2, // Account for padding and gap
-    height: (width - 72) / 2,
-    borderRadius: 12,
+  sliderInstructions: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  sliderWrapper: {
+    // Wrapper to isolate gesture handling
+    alignSelf: 'center',
+  },
+  sliderContainer: {
+    position: 'relative',
+    width: width - 40,
+    height: width - 40,
+    borderRadius: 16,
+    overflow: 'hidden',
     backgroundColor: '#3a3a3a',
+  },
+  sliderImageContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  sliderImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+  },
+  sliderOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    overflow: 'hidden',
+    borderRadius: 16,
+  },
+  sliderHandle: {
+    position: 'absolute',
+    top: '50%',
+    width: 40,
+    height: 40,
+    marginLeft: -20,
+    marginTop: -20,
+    zIndex: 10,
+  },
+  sliderHandleInner: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+  },
+  sliderHandleIcon: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
+  imageLabel: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  imageLabelText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  imageTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  sliderPlaceholder: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+    backgroundColor: '#3a3a3a',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   singleImageContainer: {
     alignItems: 'center',
