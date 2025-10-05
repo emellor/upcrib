@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../types/api';
+import { RootStackParamList } from '../navigation/AppNavigator';
 import { useSession } from '../hooks/useSession';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
@@ -39,40 +39,73 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.settingsButton}>
+          <Text style={styles.settingsIcon}>⚙️</Text>
+        </TouchableOpacity>
+        <Text style={styles.logo}>upCrib</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      {/* Category Tabs */}
+      <View style={styles.categoryTabs}>
+        <TouchableOpacity style={styles.activeTab}>
+          <Text style={styles.activeTabText}>Interior Design</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.inactiveTab}>
+          <Text style={styles.inactiveTabText}>Exterior Design</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.inactiveTab}>
+          <Text style={styles.inactiveTabText}>Garden Design</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Main Content */}
       <View style={styles.content}>
-        {/* Logo Section */}
-        <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <Image 
-              source={require('../images/logo.png')} 
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+        {/* Interior Design Card */}
+        <TouchableOpacity style={styles.designCard}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Interior Design</Text>
+            <Text style={styles.cardArrow}>→</Text>
           </View>
-          <View style={styles.taglineContainer}>
-            <Text style={styles.tagline}>
-              AI-powered interior renovation assistant
-            </Text>
-            <Text style={styles.tagline}>
-              Transform your space with personalized designs
-            </Text>
+          <Text style={styles.cardSubtitle}>Transform your interior space</Text>
+          <View style={styles.cardImages}>
+            <View style={styles.leftImage}>
+              <View style={styles.placeholderImage} />
+            </View>
+            <View style={styles.rightImage}>
+              <View style={styles.placeholderImage} />
+            </View>
           </View>
-          <View style={styles.aiTag}>
-            <Text style={styles.aiTagText}>AI POWERED</Text>
-          </View>
-        </View>
+        </TouchableOpacity>
 
-        {/* Description */}
-        <View style={styles.descriptionContainer}>
-          <Text style={styles.title}>Visualize your renovation</Text>
-          <Text style={styles.subtitle}>
-            Upload your house photo, answer AI questions,
-          </Text>
-          <Text style={styles.subtitle}>
-            and see your space transformed instantly
-          </Text>
-        </View>
+        {/* Exterior Design Card */}
+        <TouchableOpacity 
+          style={styles.designCard}
+          onPress={handleStartDesigning}
+          disabled={loading}
+        >
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Exterior Design</Text>
+            <Text style={styles.cardArrow}>→</Text>
+          </View>
+          <Text style={styles.cardSubtitle}>Transform your exterior space</Text>
+          <View style={styles.cardImages}>
+            <View style={styles.fullWidthImage}>
+              <View style={styles.placeholderImage} />
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* Garden Design Card */}
+        <TouchableOpacity style={styles.designCard}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Garden Design</Text>
+            <Text style={styles.cardArrow}>→</Text>
+          </View>
+          <Text style={styles.cardSubtitle}>Transform your garden</Text>
+        </TouchableOpacity>
 
         {/* Error Message */}
         {error && (
@@ -80,27 +113,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
+      </View>
 
-        {/* Buttons */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.startButton, loading && styles.startButtonDisabled]}
-            onPress={handleStartDesigning}
-            activeOpacity={0.8}
-            disabled={loading}
-          >
-            <Text style={styles.startButtonText}>
-              {loading ? 'STARTING SESSION...' : 'GET STARTED'}
-            </Text>
-          </TouchableOpacity>
-          
-          <View style={styles.featuresContainer}>
-            <Text style={styles.featuresTitle}>What to expect:</Text>
-            <Text style={styles.featureItem}>• Upload your house image</Text>
-            <Text style={styles.featureItem}>• AI analyzes your space</Text>
-            <Text style={styles.featureItem}>• Answer personalized questions</Text>
-            <Text style={styles.featureItem}>• Get instant renovation visualization</Text>
-          </View>
+      {/* Bottom Navigation */}
+      <View style={styles.bottomNav}>
+        <View style={styles.navItem}>
+          <Text style={styles.navIcon}>🏠</Text>
+          <Text style={styles.navLabel}>Home</Text>
+        </View>
+        <View style={styles.navItem}>
+          <Text style={styles.navIcon}>🔍</Text>
+          <Text style={styles.navLabel}>Explore</Text>
+        </View>
+        <View style={styles.navItem}>
+          <Text style={styles.navIcon}>👤</Text>
+          <Text style={styles.navLabel}>History</Text>
         </View>
       </View>
     </SafeAreaView>
@@ -112,22 +139,69 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 30,
-    paddingTop: 60,
-  },
-  logoContainer: {
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 60,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 15,
   },
-  logoCircle: {
-    width: 140,
-    height: 140,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+  settingsButton: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  settingsIcon: {
+    fontSize: 20,
+  },
+  logo: {
+    flex: 1,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000000',
+    textAlign: 'center',
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  categoryTabs: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  activeTab: {
+    backgroundColor: '#000000',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
+    marginRight: 10,
+  },
+  inactiveTab: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
+    marginRight: 10,
+  },
+  activeTabText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  inactiveTabText: {
+    color: '#999999',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  designCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {
@@ -136,50 +210,49 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 3,
   },
-  logoImage: {
-    width: 120,
-    height: 120,
-  },
-  taglineContainer: {
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  tagline: {
-    fontSize: 14,
-    color: '#666666',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  aiTag: {
-    backgroundColor: '#F0F0F0',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 10,
-  },
-  aiTagText: {
-    fontSize: 12,
+  cardTitle: {
+    fontSize: 18,
     fontWeight: '600',
-    color: '#333333',
+    color: '#000000',
   },
-  descriptionContainer: {
-    marginBottom: 30,
+  cardArrow: {
+    fontSize: 18,
+    color: '#000000',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333333',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  subtitle: {
+  cardSubtitle: {
     fontSize: 14,
     color: '#666666',
-    lineHeight: 20,
-    marginBottom: 5,
-    textAlign: 'center',
+    marginBottom: 16,
+  },
+  cardImages: {
+    flexDirection: 'row',
+    height: 160,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  leftImage: {
+    flex: 1,
+    marginRight: 8,
+  },
+  rightImage: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  fullWidthImage: {
+    flex: 1,
+  },
+  placeholderImage: {
+    flex: 1,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 8,
   },
   errorContainer: {
     backgroundColor: '#ffebee',
@@ -192,42 +265,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  buttonContainer: {
-    marginTop: 'auto',
-    marginBottom: 40,
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
   },
-  startButton: {
-    backgroundColor: '#D4A574',
-    paddingVertical: 15,
-    borderRadius: 25,
+  navItem: {
+    flex: 1,
     alignItems: 'center',
-    marginBottom: 25,
   },
-  startButtonDisabled: {
-    backgroundColor: '#E0E0E0',
+  navIcon: {
+    fontSize: 20,
+    marginBottom: 4,
   },
-  startButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: 1,
-  },
-  featuresContainer: {
-    backgroundColor: '#F8F9FA',
-    padding: 20,
-    borderRadius: 15,
-  },
-  featuresTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 10,
-  },
-  featureItem: {
-    fontSize: 14,
+  navLabel: {
+    fontSize: 12,
     color: '#666666',
-    lineHeight: 22,
-    marginBottom: 5,
   },
 });
 

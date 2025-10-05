@@ -6,11 +6,30 @@
  */
 
 import React from 'react';
-import 'react-native-gesture-handler';
+import {
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+} from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 
 function App(): React.JSX.Element {
-  return <AppNavigator />;
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="#FFFFFF"
+      />
+      <AppNavigator />
+    </SafeAreaView>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+});
 
 export default App;
