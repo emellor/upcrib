@@ -13,7 +13,7 @@ import {
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { launchImageLibrary, launchCamera, ImagePickerResponse, MediaType, PhotoQuality } from 'react-native-image-picker';
-import { RootStackParamList } from '../types/api';
+import { RootStackParamList } from '../navigation/AppNavigator';
 import { useImageUpload } from '../hooks/useImageUpload';
 
 type UploadScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Upload'>;

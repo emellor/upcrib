@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
-import { RootStackParamList } from '../types/api';
+import { RootStackParamList } from '../navigation/AppNavigator';
 import { UpCribAPIClient } from '../services/apiClient';
 
 type DesignScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Design'>;

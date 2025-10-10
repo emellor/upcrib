@@ -46,6 +46,15 @@ const StyleScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isPolling, setIsPolling] = useState(false);
   const [pollAttempts, setPollAttempts] = useState(0);
   const [showReadyMessage, setShowReadyMessage] = useState(false);
+  const [showMoodSelection, setShowMoodSelection] = useState(false);
+  const [selectedMoodBoard, setSelectedMoodBoard] = useState<any>(null);
+
+  // Initialize selectedMoodBoard to null when mood selection shows
+  useEffect(() => {
+    if (showMoodSelection) {
+      setSelectedMoodBoard(null);
+    }
+  }, [showMoodSelection]);
   const [sessionData, setSessionData] = useState<any>(null);
   const maxPollAttempts = 40; // 3+ minutes at 5 second intervals
 
@@ -183,15 +192,23 @@ const StyleScreen: React.FC<Props> = ({ navigation, route }) => {
     setIsSubmitting(true);
     try {
       await submitAnswers(sessionId);
-      setShowReadyMessage(true);
-      // Show the "Your design is ready" message for 3 seconds before navigating
-      setTimeout(() => {
-        navigation.navigate('Design', { sessionId, answers, imageUrl });
-      }, 3000);
+      setIsSubmitting(false);
+      // Show mood board selection first
+      setShowMoodSelection(true);
     } catch (err) {
       Alert.alert('Error', 'Failed to submit answers. Please try again.');
       setIsSubmitting(false);
     }
+  };
+
+  const handleMoodSelection = (moodBoard: any = null) => {
+    setSelectedMoodBoard(moodBoard);
+    setShowMoodSelection(false);
+    setShowReadyMessage(true);
+    // Show the "Your design is ready" message for 3 seconds before navigating
+    setTimeout(() => {
+      navigation.navigate('Design', { sessionId, answers, imageUrl });
+    }, 3000);
   };
 
   const getCurrentAnswer = () => {
@@ -345,6 +362,75 @@ const StyleScreen: React.FC<Props> = ({ navigation, route }) => {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Mood Board Selection */}
+        {showMoodSelection && (
+          <View style={styles.moodSelectionContainer}>
+            <View style={styles.moodSelectionContent}>
+              <Text style={styles.moodSelectionTitle}>✨ Add Inspiration</Text>
+              <Text style={styles.moodSelectionSubtitle}>
+                Would you like to include a mood board to help guide your design?
+              </Text>
+
+              {/* Mock mood boards for demo */}
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                style={styles.moodBoardsList}
+              >
+                <TouchableOpacity
+                  style={[styles.moodBoardCard, selectedMoodBoard === null && styles.moodBoardCardSelected]}
+                  onPress={() => setSelectedMoodBoard(null)}
+                >
+                  <View style={styles.moodBoardPreview}>
+                    <Text style={styles.noMoodIcon}>🎨</Text>
+                  </View>
+                  <Text style={styles.moodBoardName}>No Mood Board</Text>
+                  <Text style={styles.moodBoardSubtext}>AI will use your answers only</Text>
+                </TouchableOpacity>
+
+                {/* Demo mood boards */}
+                {[
+                  { id: '1', name: 'Modern Minimalist', photos: 5 },
+                  { id: '2', name: 'Cozy Scandinavian', photos: 3 },
+                  { id: '3', name: 'Industrial Chic', photos: 7 },
+                ].map((mood) => (
+                  <TouchableOpacity
+                    key={mood.id}
+                    style={[styles.moodBoardCard, selectedMoodBoard?.id === mood.id && styles.moodBoardCardSelected]}
+                    onPress={() => setSelectedMoodBoard(mood)}
+                  >
+                    <View style={styles.moodBoardPreview}>
+                      <View style={styles.moodPhotoGrid}>
+                        {Array.from({ length: 4 }).map((_, index) => (
+                          <View key={index} style={styles.moodPhoto} />
+                        ))}
+                      </View>
+                    </View>
+                    <Text style={styles.moodBoardName}>{mood.name}</Text>
+                    <Text style={styles.moodBoardSubtext}>{mood.photos} photos</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <View style={styles.moodSelectionButtons}>
+                <TouchableOpacity
+                  style={styles.manageMoodButton}
+                  onPress={() => navigation.navigate('MoodBoard')}
+                >
+                  <Text style={styles.manageMoodButtonText}>Manage Mood Boards</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.continueMoodButton}
+                  onPress={() => handleMoodSelection(selectedMoodBoard)}
+                >
+                  <Text style={styles.continueMoodButtonText}>Continue</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Your Design Is Ready Message */}
         {showReadyMessage && (
@@ -658,6 +744,121 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666666',
     lineHeight: 16,
+  },
+  // Mood Selection Styles
+  moodSelectionContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  moodSelectionContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxHeight: '80%',
+  },
+  moodSelectionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000000',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  moodSelectionSubtitle: {
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  moodBoardsList: {
+    marginBottom: 24,
+  },
+  moodBoardCard: {
+    width: 120,
+    marginRight: 16,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#F8F8F8',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  moodBoardCardSelected: {
+    borderColor: '#000000',
+    backgroundColor: '#F0F0F0',
+  },
+  moodBoardPreview: {
+    height: 80,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noMoodIcon: {
+    fontSize: 32,
+  },
+  moodPhotoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: '100%',
+    height: '100%',
+  },
+  moodPhoto: {
+    width: '48%',
+    height: '48%',
+    backgroundColor: '#E0E0E0',
+    margin: '1%',
+    borderRadius: 4,
+  },
+  moodBoardName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  moodBoardSubtext: {
+    fontSize: 12,
+    color: '#666666',
+    textAlign: 'center',
+  },
+  moodSelectionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  manageMoodButton: {
+    flex: 1,
+    paddingVertical: 12,
+    marginRight: 8,
+    borderRadius: 8,
+    backgroundColor: '#F0F0F0',
+  },
+  manageMoodButtonText: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  continueMoodButton: {
+    flex: 1,
+    paddingVertical: 12,
+    marginLeft: 8,
+    borderRadius: 8,
+    backgroundColor: '#000000',
+  },
+  continueMoodButtonText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontWeight: '600',
   },
 });
 

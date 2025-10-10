@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   StatusBar,
   Image,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -21,6 +22,54 @@ interface HomeScreenProps {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { loading, error, createSession } = useSession();
+  const [activeTab, setActiveTab] = useState<'interior' | 'exterior' | 'garden'>('exterior');
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const handleTabPress = (tab: 'interior' | 'exterior' | 'garden') => {
+    setActiveTab(tab);
+    
+    // Calculate scroll position based on card height and spacing
+    const cardHeight = 220; // Approximate card height including margins
+    let scrollToY = 0;
+    
+    switch (tab) {
+      case 'exterior':
+        scrollToY = 0;
+        break;
+      case 'interior':
+        scrollToY = cardHeight;
+        break;
+      case 'garden':
+        scrollToY = cardHeight * 2;
+        break;
+    }
+    
+    scrollViewRef.current?.scrollTo({
+      y: scrollToY,
+      animated: true,
+    });
+  };
+
+  const handleScroll = (event: any) => {
+    const scrollY = event.nativeEvent.contentOffset.y;
+    const contentHeight = event.nativeEvent.contentSize.height;
+    const layoutHeight = event.nativeEvent.layoutMeasurement.height;
+    const cardHeight = 220; // Same as above
+    
+    // Check if scrolled to bottom
+    const isAtBottom = scrollY + layoutHeight >= contentHeight - 10; // 10px threshold
+    
+    // Determine which section is most in focus
+    if (isAtBottom) {
+      setActiveTab('garden');
+    } else if (scrollY < cardHeight * 0.5) {
+      setActiveTab('exterior');
+    } else if (scrollY < cardHeight * 1.5) {
+      setActiveTab('interior');
+    } else {
+      setActiveTab('garden');
+    }
+  };
 
   const handleStartDesigning = async () => {
     try {
@@ -30,6 +79,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       Alert.alert(
         'Error',
         err.message || 'Failed to start renovation session. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleExteriorDesign = async () => {
+    try {
+      const session = await createSession();
+      navigation.navigate('ColorPalette', { sessionId: session.sessionId });
+    } catch (err: any) {
+      Alert.alert(
+        'Error',
+        err.message || 'Failed to start exterior design session. Please try again.',
         [{ text: 'OK' }]
       );
     }
@@ -50,40 +112,44 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
       {/* Category Tabs */}
       <View style={styles.categoryTabs}>
-        <TouchableOpacity style={styles.activeTab}>
-          <Text style={styles.activeTabText}>Interior Design</Text>
+        <TouchableOpacity 
+          style={activeTab === 'exterior' ? styles.activeTab : styles.inactiveTab}
+          onPress={() => handleTabPress('exterior')}
+        >
+          <Text style={activeTab === 'exterior' ? styles.activeTabText : styles.inactiveTabText}>
+            Exterior Design
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.inactiveTab}>
-          <Text style={styles.inactiveTabText}>Exterior Design</Text>
+        <TouchableOpacity 
+          style={activeTab === 'interior' ? styles.activeTab : styles.inactiveTab}
+          onPress={() => handleTabPress('interior')}
+        >
+          <Text style={activeTab === 'interior' ? styles.activeTabText : styles.inactiveTabText}>
+            Interior Design
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.inactiveTab}>
-          <Text style={styles.inactiveTabText}>Garden Design</Text>
+        <TouchableOpacity 
+          style={activeTab === 'garden' ? styles.activeTab : styles.inactiveTab}
+          onPress={() => handleTabPress('garden')}
+        >
+          <Text style={activeTab === 'garden' ? styles.activeTabText : styles.inactiveTabText}>
+            Garden Design
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* Main Content */}
-      <View style={styles.content}>
-        {/* Interior Design Card */}
-        <TouchableOpacity style={styles.designCard}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Interior Design</Text>
-            <Text style={styles.cardArrow}>→</Text>
-          </View>
-          <Text style={styles.cardSubtitle}>Transform your interior space</Text>
-          <View style={styles.cardImages}>
-            <View style={styles.leftImage}>
-              <View style={styles.placeholderImage} />
-            </View>
-            <View style={styles.rightImage}>
-              <View style={styles.placeholderImage} />
-            </View>
-          </View>
-        </TouchableOpacity>
-
+      <ScrollView 
+        ref={scrollViewRef}
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
         {/* Exterior Design Card */}
         <TouchableOpacity 
           style={styles.designCard}
-          onPress={handleStartDesigning}
+          onPress={handleExteriorDesign}
           disabled={loading}
         >
           <View style={styles.cardHeader}>
@@ -93,8 +159,28 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <Text style={styles.cardSubtitle}>Transform your exterior space</Text>
           <View style={styles.cardImages}>
             <View style={styles.fullWidthImage}>
-              <View style={styles.placeholderImage} />
+              <Image 
+                source={require('../assets/images/transform-exterior.png')}
+                style={styles.exteriorImage}
+                resizeMode="cover"
+              />
             </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* Interior Design Card */}
+        <TouchableOpacity style={styles.designCard}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Interior Design</Text>
+            <Text style={styles.cardArrow}>→</Text>
+          </View>
+          <Text style={styles.cardSubtitle}>Transform your interior space</Text>
+          <View style={styles.cardImages}>
+            <Image 
+              source={require('../assets/images/transform-interior.png')}
+              style={styles.interiorImage}
+              resizeMode="cover"
+            />
           </View>
         </TouchableOpacity>
 
@@ -105,6 +191,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <Text style={styles.cardArrow}>→</Text>
           </View>
           <Text style={styles.cardSubtitle}>Transform your garden</Text>
+          <View style={styles.cardImages}>
+            <View style={styles.fullWidthImage}>
+              <Image 
+                source={require('../assets/images/transform-garden.png')}
+                style={styles.gardenImage}
+                resizeMode="cover"
+              />
+            </View>
+          </View>
         </TouchableOpacity>
 
         {/* Error Message */}
@@ -113,7 +208,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
-      </View>
+      </ScrollView>
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
@@ -121,10 +216,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <Text style={styles.navIcon}>🏠</Text>
           <Text style={styles.navLabel}>Home</Text>
         </View>
-        <View style={styles.navItem}>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => navigation.navigate('MoodBoard')}
+        >
           <Text style={styles.navIcon}>🔍</Text>
-          <Text style={styles.navLabel}>Explore</Text>
-        </View>
+          <Text style={styles.navLabel}>Mood Board</Text>
+        </TouchableOpacity>
         <View style={styles.navItem}>
           <Text style={styles.navIcon}>👤</Text>
           <Text style={styles.navLabel}>History</Text>
@@ -252,6 +350,21 @@ const styles = StyleSheet.create({
   placeholderImage: {
     flex: 1,
     backgroundColor: '#F0F0F0',
+    borderRadius: 8,
+  },
+  exteriorImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  interiorImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  gardenImage: {
+    width: '100%',
+    height: '100%',
     borderRadius: 8,
   },
   errorContainer: {
