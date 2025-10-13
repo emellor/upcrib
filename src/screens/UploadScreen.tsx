@@ -96,8 +96,8 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
       setAnalyzing(true);
       await triggerAnalysis(sessionId);
       
-      // Navigate to style screen with the uploaded image URL
-      navigation.navigate('Style', { sessionId, imageUrl: uploadResult.imageUrl });
+      // Navigate to color palette screen with the uploaded image URL
+      navigation.navigate('ColorPalette', { sessionId });
     } catch (err: any) {
       Alert.alert(
         'Upload Failed', 
@@ -165,10 +165,10 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
         </View>
 
         {/* Screen Info */}
-        <Text style={styles.screenLabel}>Upload Your Space</Text>
+        <Text style={styles.screenLabel}>Upload Your Exterior</Text>
         <Text style={styles.screenDescription}>
-          Take a clear photo of the room you want to renovate. Our AI will analyze your space
-          and generate personalized renovation questions for you.
+          Take a clear photo of the exterior space you want to transform. Our AI will analyze your space
+          and help you choose the perfect color palette and design style.
         </Text>
 
         {/* Status Messages */}
@@ -223,7 +223,7 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
               </Text>
             </View>
           ) : (
-            <Text style={styles.continueButtonText}>Continue to Questions</Text>
+            <Text style={styles.continueButtonText}>Continue to Color Palette</Text>
           )}
         </TouchableOpacity>
       </View>

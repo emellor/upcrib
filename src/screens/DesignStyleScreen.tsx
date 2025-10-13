@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   StatusBar,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -34,6 +35,12 @@ const designStyles = [
   { name: 'Minimalist', description: 'Simple and uncluttered', emoji: '⚪' },
   { name: 'Industrial', description: 'Raw materials and urban edge', emoji: '🏭' },
   { name: 'Scandinavian', description: 'Light woods and cozy comfort', emoji: '🌲' },
+  { name: 'Rustic', description: 'Natural textures and warm materials', emoji: '🏚️' },
+  { name: 'Art Deco', description: 'Geometric patterns and luxury', emoji: '💎' },
+  { name: 'Colonial', description: 'Historical charm and symmetry', emoji: '🏘️' },
+  { name: 'Mediterranean', description: 'Warm colors and natural stone', emoji: '🌊' },
+  { name: 'Craftsman', description: 'Handcrafted details and quality', emoji: '🔨' },
+  { name: 'Prairie', description: 'Horizontal lines and natural integration', emoji: '🌾' },
 ];
 
 const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
@@ -75,7 +82,7 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.stepIndicator}>Step 4 of 4</Text>
+          <Text style={styles.stepIndicator}>Step 3 of 3</Text>
           <Text style={styles.title}>Design Style</Text>
         </View>
         <View style={{ width: 44 }} />
@@ -89,7 +96,11 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
       </View>
 
       {/* Content */}
-      <View style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.subtitle}>
           Select your preferred architectural style
         </Text>
@@ -120,14 +131,14 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
             </TouchableOpacity>
           ))}
         </View>
-      </View>
+      </ScrollView>
 
       {/* Bottom Navigation */}
       <View style={styles.bottomContainer}>
         <View style={styles.summaryContainer}>
           <Text style={styles.summaryTitle}>Your Design Preferences:</Text>
           <Text style={styles.summaryText}>
-            • {selectedColors?.length || 0} colors • {selectedThemes?.length || 0} themes • {selectedStyle} style
+            • {selectedColors?.length || 0} color palettes • {selectedStyle} style
             {hasInspirationPhoto ? ' • Inspiration photo' : ''}
           </Text>
         </View>
@@ -203,8 +214,11 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 24,
     paddingTop: 32,
+    paddingBottom: 40,
   },
   subtitle: {
     fontSize: 18,
@@ -217,10 +231,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 16,
   },
   styleCard: {
-    width: '47%',
+    width: '48%',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
@@ -233,6 +246,7 @@ const styles = StyleSheet.create({
     elevation: 3,
     alignItems: 'center',
     minHeight: 140,
+    marginBottom: 16,
   },
   selectedStyle: {
     backgroundColor: '#000000',

@@ -24,9 +24,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { loading, error, createSession } = useSession();
   const [activeTab, setActiveTab] = useState<'interior' | 'exterior' | 'garden'>('exterior');
   const scrollViewRef = useRef<ScrollView>(null);
+  const isUserScrollingRef = useRef(false);
+  const lastTabPressTime = useRef(0);
 
   const handleTabPress = (tab: 'interior' | 'exterior' | 'garden') => {
+    const now = Date.now();
+    // Prevent rapid tab switching (debounce)
+    if (now - lastTabPressTime.current < 300) {
+      return;
+    }
+    lastTabPressTime.current = now;
+    
     setActiveTab(tab);
+    isUserScrollingRef.current = true;
     
     // Calculate scroll position based on card height and spacing
     const cardHeight = 220; // Approximate card height including margins
@@ -48,9 +58,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       y: scrollToY,
       animated: true,
     });
+    
+    // Reset the flag after scroll animation completes
+    setTimeout(() => {
+      isUserScrollingRef.current = false;
+    }, 600);
   };
 
   const handleScroll = (event: any) => {
+    // Don't update tab if user just pressed a tab button
+    if (isUserScrollingRef.current) {
+      return;
+    }
+    
     const scrollY = event.nativeEvent.contentOffset.y;
     const contentHeight = event.nativeEvent.contentSize.height;
     const layoutHeight = event.nativeEvent.layoutMeasurement.height;
@@ -60,14 +80,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     const isAtBottom = scrollY + layoutHeight >= contentHeight - 10; // 10px threshold
     
     // Determine which section is most in focus
+    let newActiveTab: 'interior' | 'exterior' | 'garden';
+    
     if (isAtBottom) {
-      setActiveTab('garden');
+      newActiveTab = 'garden';
     } else if (scrollY < cardHeight * 0.5) {
-      setActiveTab('exterior');
+      newActiveTab = 'exterior';
     } else if (scrollY < cardHeight * 1.5) {
-      setActiveTab('interior');
+      newActiveTab = 'interior';
     } else {
-      setActiveTab('garden');
+      newActiveTab = 'garden';
+    }
+    
+    // Only update if the tab actually changed
+    if (newActiveTab !== activeTab) {
+      setActiveTab(newActiveTab);
     }
   };
 
@@ -87,7 +114,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const handleExteriorDesign = async () => {
     try {
       const session = await createSession();
-      navigation.navigate('ColorPalette', { sessionId: session.sessionId });
+      navigation.navigate('Upload', { sessionId: session.sessionId });
     } catch (err: any) {
       Alert.alert(
         'Error',
@@ -115,6 +142,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <TouchableOpacity 
           style={activeTab === 'exterior' ? styles.activeTab : styles.inactiveTab}
           onPress={() => handleTabPress('exterior')}
+          activeOpacity={0.7}
         >
           <Text style={activeTab === 'exterior' ? styles.activeTabText : styles.inactiveTabText}>
             Exterior Design
@@ -123,6 +151,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <TouchableOpacity 
           style={activeTab === 'interior' ? styles.activeTab : styles.inactiveTab}
           onPress={() => handleTabPress('interior')}
+          activeOpacity={0.7}
         >
           <Text style={activeTab === 'interior' ? styles.activeTabText : styles.inactiveTabText}>
             Interior Design
@@ -131,6 +160,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <TouchableOpacity 
           style={activeTab === 'garden' ? styles.activeTab : styles.inactiveTab}
           onPress={() => handleTabPress('garden')}
+          activeOpacity={0.7}
         >
           <Text style={activeTab === 'garden' ? styles.activeTabText : styles.inactiveTabText}>
             Garden Design
@@ -144,6 +174,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         style={styles.content}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
+        onMomentumScrollEnd={handleScroll}
         scrollEventThrottle={16}
       >
         {/* Exterior Design Card */}
