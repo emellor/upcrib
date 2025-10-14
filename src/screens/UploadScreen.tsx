@@ -89,23 +89,21 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
     }
 
     try {
-      // Upload image
-      const uploadResult = await uploadImage(sessionId, selectedImage);
+      // For the Enhanced Style Renovation workflow, we don't need to upload to session
+      // We'll pass the image URI directly through the navigation flow
+      console.log('Selected image URI for Enhanced Style Renovation:', selectedImage);
       
-      // Trigger analysis
-      setAnalyzing(true);
-      await triggerAnalysis(sessionId);
-      
-      // Navigate to color palette screen with the uploaded image URL
-      navigation.navigate('ColorPalette', { sessionId });
+      // Navigate to color palette screen with the image URI
+      navigation.navigate('ColorPalette', { 
+        sessionId, 
+        imageUri: selectedImage 
+      });
     } catch (err: any) {
       Alert.alert(
-        'Upload Failed', 
-        err.message || 'Failed to upload and analyze image. Please try again.',
+        'Navigation Failed', 
+        err.message || 'Failed to proceed. Please try again.',
         [{ text: 'OK' }]
       );
-    } finally {
-      setAnalyzing(false);
     }
   };
 

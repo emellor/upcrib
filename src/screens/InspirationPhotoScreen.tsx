@@ -32,7 +32,7 @@ const InspirationPhotoScreen: React.FC<InspirationPhotoScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { sessionId, selectedColors, selectedThemes } = route.params;
+  const { sessionId, selectedColors, selectedThemes, imageUri } = route.params;
   const [hasInspirationPhoto, setHasInspirationPhoto] = useState(false);
 
   const handleAddInspirationPhoto = () => {
@@ -67,7 +67,8 @@ const InspirationPhotoScreen: React.FC<InspirationPhotoScreenProps> = ({
       sessionId,
       selectedColors,
       selectedThemes,
-      hasInspirationPhoto
+      hasInspirationPhoto,
+      imageUri
     });
   };
 
@@ -76,7 +77,8 @@ const InspirationPhotoScreen: React.FC<InspirationPhotoScreenProps> = ({
       sessionId,
       selectedColors,
       selectedThemes,
-      hasInspirationPhoto: false
+      hasInspirationPhoto: false,
+      imageUri
     });
   };
 

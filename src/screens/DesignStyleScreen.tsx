@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,13 @@ import {
   StatusBar,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { enhancedStyleRenovationApi } from '../services/enhancedStyleRenovationApi';
+import { apiClient } from '../services/apiClient';
 
 type DesignStyleScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -47,26 +50,126 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { sessionId, selectedColors, selectedThemes, hasInspirationPhoto } = route.params;
-  const [selectedStyle, setSelectedStyle] = useState<string>('Modern');
-  const [loading, setLoading] = useState(false);
+  const { sessionId, selectedColors, selectedThemes, hasInspirationPhoto, imageUri } = route.params;
+  const [selectedStyle, setSelectedStyle] = useState<string>('');
+  const [architecturalStyles, setArchitecturalStyles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
+
+  // Fallback styles in case API is unavailable
+  const fallbackStyles = [
+    { id: 'georgian', name: 'Georgian', description: 'Elegant symmetrical design with classical proportions' },
+    { id: 'victorian', name: 'Victorian', description: 'Ornate details and decorative elements' },
+    { id: 'tudor', name: 'Tudor', description: 'Half-timbered construction with medieval charm' },
+    { id: 'cotswold-cottage', name: 'Cotswold Cottage', description: 'Honey-colored stone with thatched roofs' },
+    { id: 'country-farmhouse', name: 'Country Farmhouse', description: 'Rustic charm with practical design' },
+    { id: 'contemporary-minimal', name: 'Contemporary Minimal', description: 'Clean lines and modern simplicity' },
+    { id: 'provencal', name: 'Provençal', description: 'French countryside style with warm colors' },
+    { id: 'alpine-chalet', name: 'Alpine Chalet', description: 'Mountain retreat with natural materials' },
+    { id: 'mediterranean-villa', name: 'Mediterranean Villa', description: 'Warm stucco with terracotta roofs' },
+  ];
+
+  useEffect(() => {
+    loadArchitecturalStyles();
+  }, []);
+
+  const loadArchitecturalStyles = async () => {
+    setLoading(true);
+    setLoadingError(null);
+    
+    try {
+      console.log('Fetching architectural styles from API...');
+      const styles = await enhancedStyleRenovationApi.getArchitecturalStyles();
+      
+      if (Array.isArray(styles) && styles.length > 0) {
+        console.log('Successfully loaded styles from API:', styles);
+        setArchitecturalStyles(styles);
+        // Set default selection to first available style
+        if (!selectedStyle && styles[0]) {
+          setSelectedStyle(styles[0].id);
+        }
+      } else {
+        console.log('API returned empty styles array, using fallback');
+        setArchitecturalStyles(fallbackStyles);
+        setSelectedStyle(fallbackStyles[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to load styles from API, using fallback:', error);
+      setLoadingError('Failed to load styles from server');
+      setArchitecturalStyles(fallbackStyles);
+      setSelectedStyle(fallbackStyles[0].id);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGenerate = async () => {
-    setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-      // Navigate to results screen with dummy data
-      navigation.navigate('Result', {
-        sessionId,
-        results: [
-          { id: 1, imageUrl: 'dummy-result-1.jpg' },
-          { id: 2, imageUrl: 'dummy-result-2.jpg' },
-          { id: 3, imageUrl: 'dummy-result-3.jpg' },
-        ],
+    if (!selectedStyle) {
+      Alert.alert('Please select a style', 'Choose an architectural style before generating your renovation.');
+      return;
+    }
+
+    try {
+      // The Enhanced Style Renovation API requires the original image file
+      if (!imageUri) {
+        Alert.alert('No image found', 'Please go back and upload an image first.');
+        return;
+      }
+      
+      // Map selected colors number back to palette ID
+      let selectedColorPalette = 'classic-neutral'; // Default fallback
+      
+      if (selectedColors && selectedColors.length > 0) {
+        const numberToPaletteId: { [key: number]: string } = {
+          0: 'classic-neutral', // surprise-me falls back to classic-neutral
+          1: 'classic-neutral',
+          2: 'coastal-blue',
+          3: 'heritage-red',
+          4: 'forest-green',
+          5: 'modern-monochrome',
+          6: 'warm-terracotta',
+          7: 'cottage-pastels',
+          8: 'alpine-naturals'
+        };
+        selectedColorPalette = numberToPaletteId[selectedColors[0]] || 'classic-neutral';
+      }
+      
+      console.log('Creating enhanced style renovation with:', {
+        imageUri,
+        selectedStyle,
+        selectedColorPalette
       });
-    }, 3000);
+      
+      // Use the Enhanced Style Renovation API directly
+      const result = await enhancedStyleRenovationApi.createAndWaitForCompletion(
+        {
+          houseImageUri: imageUri,
+          architecturalStyle: selectedStyle,
+          colorPalette: selectedColorPalette
+        },
+        (status) => {
+          console.log('Generation status:', status);
+          // Could update UI here with status updates
+        }
+      );
+      
+      console.log('Enhanced style renovation completed:', result);
+      
+      // Navigate to ResultScreen with the result
+      navigation.navigate('Result', {
+        sessionId: result.sessionId,
+        imageUrl: result.imageUrl,
+        originalImageUrl: imageUri,
+      });
+      
+    } catch (error: any) {
+      console.error('Generate renovation error:', error);
+      Alert.alert(
+        'Generation Failed',
+        error.message || 'Failed to generate renovation. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   return (
@@ -105,32 +208,48 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
           Select your preferred architectural style
         </Text>
         
-        <View style={styles.styleGrid}>
-          {designStyles.map(style => (
-            <TouchableOpacity
-              key={style.name}
-              style={[
-                styles.styleCard,
-                selectedStyle === style.name && styles.selectedStyle,
-              ]}
-              onPress={() => setSelectedStyle(style.name)}
-            >
-              <Text style={styles.styleEmoji}>{style.emoji}</Text>
-              <Text style={[
-                styles.styleText,
-                selectedStyle === style.name && styles.selectedStyleText,
-              ]}>
-                {style.name}
-              </Text>
-              <Text style={[
-                styles.styleDescription,
-                selectedStyle === style.name && styles.selectedStyleDescription,
-              ]}>
-                {style.description}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>Loading available styles...</Text>
+          </View>
+        ) : (
+          <>
+            {loadingError && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>⚠️ {loadingError}</Text>
+                <Text style={styles.errorSubtext}>Using cached styles</Text>
+              </View>
+            )}
+            
+            <View style={styles.styleGrid}>
+              {architecturalStyles.map(style => (
+                <TouchableOpacity
+                  key={style.id}
+                  style={[
+                    styles.styleCard,
+                    selectedStyle === style.id && styles.selectedStyle,
+                  ]}
+                  onPress={() => setSelectedStyle(style.id)}
+                >
+                  <Text style={styles.styleEmoji}>🏠</Text>
+                  <Text style={[
+                    styles.styleText,
+                    selectedStyle === style.id && styles.selectedStyleText,
+                  ]}>
+                    {style.name}
+                  </Text>
+                  <Text style={[
+                    styles.styleDescription,
+                    selectedStyle === style.id && styles.selectedStyleDescription,
+                  ]}>
+                    {style.description}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Bottom Navigation */}
@@ -145,10 +264,9 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         <TouchableOpacity
           style={styles.generateButton}
           onPress={handleGenerate}
-          disabled={loading}
         >
           <Text style={styles.generateButtonText}>
-            {loading ? 'Creating Your Design...' : 'Generate Design'}
+            Generate Design
           </Text>
         </TouchableOpacity>
       </View>
@@ -314,6 +432,38 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#DC2626',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  errorSubtext: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });
 

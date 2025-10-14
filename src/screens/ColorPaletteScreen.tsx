@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,14 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { enhancedStyleRenovationApi, ColorPalette } from '../services/enhancedStyleRenovationApi';
 
 type ColorPaletteScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -26,51 +30,128 @@ interface ColorPaletteScreenProps {
   route: ColorPaletteScreenRouteProp;
 }
 
-const colorPalettes = [
-  { 
-    id: 1, 
-    name: 'Surprise Me', 
-    icon: '🎨',
-    colors: ['#FFB6C1', '#DDA0DD', '#87CEEB', '#98FB98'],
-    description: 'Let AI choose the perfect combination'
-  },
-  { 
-    id: 2, 
-    name: 'High-Contrast Neutrals', 
-    colors: ['#E5E5E5', '#D2B48C', '#2F2F2F'],
-    description: 'Bold contrast with sophisticated neutrals'
-  },
-  { 
-    id: 3, 
-    name: 'Forest-Inspired', 
-    colors: ['#D2B48C', '#A0522D', '#556B2F', '#2F2F2F'],
-    description: 'Earth tones inspired by nature'
-  },
-  { 
-    id: 4, 
-    name: 'Romance', 
-    colors: ['#F8BBD9', '#E6E6FA', '#D2B48C', '#8B4513'],
-    description: 'Soft and romantic color harmony'
-  },
-];
-
 const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { sessionId } = route.params;
-  const [selectedPaletteId, setSelectedPaletteId] = useState<number | null>(null);
+  const { sessionId, imageUri } = route.params;
+  const [selectedPaletteId, setSelectedPaletteId] = useState<string | null>(null);
+  const [colorPalettes, setColorPalettes] = useState<ColorPalette[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const selectPalette = (paletteId: number) => {
+  const selectPalette = (paletteId: string) => {
     setSelectedPaletteId(selectedPaletteId === paletteId ? null : paletteId);
   };
 
+  // Load color palettes from API
+  useEffect(() => {
+    const loadColorPalettes = async () => {
+      try {
+        setLoading(true);
+        const palettes = await enhancedStyleRenovationApi.getColorPalettes();
+        
+        // Add a "Surprise Me" option at the beginning
+        const surpriseMeOption: ColorPalette = {
+          id: 'surprise-me',
+          name: 'Surprise Me',
+          colors: ['#FFB6C1', '#DDA0DD', '#87CEEB', '#98FB98'],
+          description: 'Let AI choose the perfect combination'
+        };
+        
+        // Ensure palettes is an array before spreading
+        const paletteArray = Array.isArray(palettes) ? palettes : [];
+        setColorPalettes([surpriseMeOption, ...paletteArray]);
+      } catch (error) {
+        console.error('Failed to load color palettes:', error);
+        
+        // Fallback to hardcoded palettes that match backend API
+        const fallbackPalettes: ColorPalette[] = [
+          {
+            id: 'surprise-me',
+            name: 'Surprise Me',
+            colors: ['#FFB6C1', '#DDA0DD', '#87CEEB', '#98FB98'],
+            description: 'Let AI choose the perfect combination'
+          },
+          {
+            id: 'classic-neutral',
+            name: 'Classic Neutral',
+            colors: ['#F5F5DC', '#D2B48C', '#8B4513', '#2F4F4F'],
+            description: 'Timeless beige, tan, brown, and charcoal'
+          },
+          {
+            id: 'coastal-blue',
+            name: 'Coastal Blue',
+            colors: ['#F0F8FF', '#4682B4', '#2E5984', '#1C3A56'],
+            description: 'Soft whites and blues inspired by seaside living'
+          },
+          {
+            id: 'heritage-red',
+            name: 'Heritage Red',
+            colors: ['#FFFAF0', '#DC143C', '#8B0000', '#2F2F2F'],
+            description: 'Classic red brick with cream and charcoal accents'
+          },
+          {
+            id: 'forest-green',
+            name: 'Forest Green',
+            colors: ['#F5F5DC', '#228B22', '#006400', '#8B4513'],
+            description: 'Natural greens with cream and earth tones'
+          },
+          {
+            id: 'modern-monochrome',
+            name: 'Modern Monochrome',
+            colors: ['#FFFFFF', '#C0C0C0', '#808080', '#000000'],
+            description: 'Sophisticated whites, grays, and black'
+          },
+          {
+            id: 'warm-terracotta',
+            name: 'Warm Terracotta',
+            colors: ['#FFF8DC', '#CD853F', '#A0522D', '#8B4513'],
+            description: 'Mediterranean-inspired warm earth tones'
+          },
+          {
+            id: 'cottage-pastels',
+            name: 'Cottage Pastels',
+            colors: ['#FFFAF0', '#DDA0DD', '#98FB98', '#F0E68C'],
+            description: 'Soft pastels perfect for cottage styles'
+          },
+          {
+            id: 'alpine-naturals',
+            name: 'Alpine Naturals',
+            colors: ['#F5F5DC', '#8B4513', '#228B22', '#2F4F4F'],
+            description: 'Natural wood, stone, and forest colors'
+          }
+        ];
+        
+        setColorPalettes(fallbackPalettes);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadColorPalettes();
+  }, []);
+
   const handleNext = () => {
     const selectedPalette = selectedPaletteId ? colorPalettes.find(p => p.id === selectedPaletteId) : null;
+    
+    // Map palette IDs to numbers for navigation
+    const paletteIdToNumber: { [key: string]: number } = {
+      'surprise-me': 0,
+      'classic-neutral': 1,
+      'coastal-blue': 2,
+      'heritage-red': 3,
+      'forest-green': 4,
+      'modern-monochrome': 5,
+      'warm-terracotta': 6,
+      'cottage-pastels': 7,
+      'alpine-naturals': 8
+    };
+    
     navigation.navigate('InspirationPhoto', { 
       sessionId,
-      selectedColors: selectedPalette ? selectedPalette.colors.map((_, index) => index + 1) : [],
-      selectedThemes: [] 
+      selectedColors: selectedPalette ? [paletteIdToNumber[selectedPalette.id] || 1] : [],
+      selectedThemes: [],
+      imageUri
     });
   };
 
@@ -78,7 +159,8 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
     navigation.navigate('InspirationPhoto', { 
       sessionId,
       selectedColors: [],
-      selectedThemes: [] 
+      selectedThemes: [],
+      imageUri
     });
   };
 
@@ -111,12 +193,22 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
       </View>
 
       {/* Content */}
-      <View style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.subtitle}>
           Choose a color palette that best represents your exterior design vision
         </Text>
         
-        <View style={styles.paletteGrid}>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3B82F6" />
+            <Text style={styles.loadingText}>Loading color palettes...</Text>
+          </View>
+        ) : (
+          <View style={styles.paletteGrid}>
           {colorPalettes.map(palette => (
             <TouchableOpacity
               key={palette.id}
@@ -127,7 +219,7 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
               onPress={() => selectPalette(palette.id)}
               activeOpacity={0.8}
             >
-              {palette.id === 1 ? (
+              {palette.id === 'surprise-me' ? (
                 <View style={styles.surpriseIcon}>
                   <Text style={styles.paletteIcon}>🎨</Text>
                 </View>
@@ -155,6 +247,7 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
             </TouchableOpacity>
           ))}
         </View>
+        )}
 
         {selectedPaletteId && (
           <View style={styles.selectionSummary}>
@@ -166,7 +259,7 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
             </Text>
           </View>
         )}
-      </View>
+      </ScrollView>
 
       {/* Bottom Navigation */}
       <View style={styles.bottomContainer}>
@@ -388,6 +481,21 @@ const styles = StyleSheet.create({
   },
   nextButtonTextDisabled: {
     color: '#94A3B8',
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748B',
+    textAlign: 'center',
   },
 });
 

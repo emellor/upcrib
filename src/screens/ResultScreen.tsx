@@ -112,6 +112,77 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
     loadSessionData();
   }, []);
 
+  // Add polling for pending jobs using enhanced style renovation API
+  useEffect(() => {
+    let pollInterval: NodeJS.Timeout | null = null;
+    
+    if (sessionData?.hasPendingJobs) {
+      // Poll every 3 seconds while there are pending jobs using enhanced style renovation endpoint
+      pollInterval = setInterval(async () => {
+        try {
+          const data = await apiClient.getEnhancedStyleRenovationStatus(sessionId);
+          
+          if (data.success) {
+            // Update session data with enhanced style renovation status
+            setSessionData(prevData => ({
+              ...prevData!,
+              status: data.data.status as any,
+              hasPendingJobs: data.data.hasPendingJobs,
+              generatedImage: data.data.generatedImage ? {
+                path: data.data.generatedImage.url,
+                filename: data.data.generatedImage.filename,
+                extension: data.data.generatedImage.filename.split('.').pop() || 'jpg',
+                generatedAt: new Date().toISOString(),
+              } : undefined,
+            }));
+            
+            // Stop polling when no more pending jobs
+            if (!data.data.hasPendingJobs) {
+              if (pollInterval) {
+                clearInterval(pollInterval);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Enhanced style renovation polling error:', err);
+          // Fallback to regular session state polling
+          try {
+            const data = await apiClient.getSessionState(sessionId);
+            setSessionData(data);
+            
+            if (!data.hasPendingJobs) {
+              if (pollInterval) {
+                clearInterval(pollInterval);
+              }
+              
+              // Reload questions if they're now available
+              if (data.hasQuestions && (!questions || questions.length === 0)) {
+                try {
+                  const questionsResponse = await apiClient.getQuestions(sessionId);
+                  setQuestions(questionsResponse.questions || []);
+                } catch (err) {
+                  console.error('Failed to load questions:', err);
+                }
+              }
+            }
+          } catch (fallbackErr) {
+            console.error('Fallback polling error:', fallbackErr);
+            if (pollInterval) {
+              clearInterval(pollInterval);
+            }
+          }
+        }
+      }, 3000);
+    }
+    
+    // Cleanup interval on component unmount or when polling stops
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [sessionData?.hasPendingJobs, sessionId, questions]);
+
   // Prevent hardware back button on Android
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -284,7 +355,11 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
   const getImageUrl = () => {
     if (propImageUrl) return propImageUrl;
     if (sessionData?.generatedImage) {
-      // Construct full URL for generated image using the correct endpoint
+      // For enhanced style renovation, the path already contains the full URL path
+      if (sessionData.generatedImage.path && sessionData.generatedImage.path.startsWith('/')) {
+        return `${apiClient.apiBaseURL}${sessionData.generatedImage.path}`;
+      }
+      // Fallback to generated folder for old format
       return `${apiClient.apiBaseURL}/generated/${sessionData.generatedImage.filename}`;
     }
     return null;
@@ -310,6 +385,19 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
         <TouchableOpacity style={styles.homeButton} onPress={handleStartNew}>
           <Text style={styles.homeButtonText}>Start New Design</Text>
         </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Show analysis in progress when there are pending jobs
+  if (sessionData?.hasPendingJobs) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Analyzing your design...</Text>
+        <Text style={styles.loadingSubtext}>
+          Our AI is processing your image and creating personalized renovation suggestions.
+        </Text>
       </View>
     );
   }
@@ -589,7 +677,7 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
                                 style={[
                                   styles.progressDot,
                                   index === currentQuestionIndex && styles.progressDotActive,
-                                  updatedAnswers[question.id] && styles.progressDotAnswered
+                                  updatedAnswers[question.id] ? styles.progressDotAnswered : null
                                 ]}
                               />
                             ))}
@@ -750,6 +838,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#FFFFFF',
+  },
+  loadingSubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    paddingHorizontal: 40,
+    lineHeight: 20,
   },
   errorContainer: {
     flex: 1,

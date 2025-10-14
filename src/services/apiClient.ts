@@ -12,8 +12,8 @@ import {
 
 // API Configuration
 const API_CONFIG = {
-  baseURL: 'https://upcrib-backend.onrender.com', // Force production URL for now
-  // baseURL: __DEV__ ? 'http://localhost:3001' : 'https://upcrib-backend.onrender.com',
+  baseURL: __DEV__ ? 'http://localhost:3001' : 'https://upcrib-backend.onrender.com',
+  // baseURL: 'https://upcrib-backend.onrender.com', // Force production URL for now
   apiPath: '/api',
   timeout: 30000, // 30 seconds
   headers: {
@@ -30,7 +30,7 @@ export class UpCribAPIClient {
     this.apiPath = API_CONFIG.apiPath;
   }
 
-  // Public getter for baseURL
+  // Expose baseURL for accessing uploaded files
   get apiBaseURL(): string {
     return this.baseURL;
   }
@@ -260,13 +260,152 @@ export class UpCribAPIClient {
     }>(`/sessions/${sessionId}/images`);
     return response.data!;
   }
+
+  // Enhanced Style Renovation endpoint to match the working script
+    // Create enhanced style renovation with session reference
+  async createEnhancedStyleRenovationFromSession(
+    sessionId: string,
+    architecturalStyle?: string,
+    colorPalette?: string
+  ): Promise<{
+    success: boolean;
+    data: {
+      sessionId: string;
+      jobId: string;
+      status: string;
+      houseImageUrl?: string;
+      referenceImageUrl?: string;
+    };
+  }> {
+    console.log('Creating enhanced style renovation for session:', sessionId);
+    console.log('Style parameters:', { architecturalStyle, colorPalette });
+    
+    // Try to send the session ID and style parameters to enhanced style renovation
+    // The backend should be able to use the existing uploaded image from the session
+    const formData = new FormData();
+    
+    // Pass the session ID so backend can find the existing image
+    formData.append('sessionId', sessionId);
+    
+    // Add style parameters
+    if (architecturalStyle) {
+      formData.append('architecturalStyle', architecturalStyle);
+      console.log('Added architecturalStyle:', architecturalStyle);
+    }
+    if (colorPalette) {
+      formData.append('colorPalette', colorPalette);
+      console.log('Added colorPalette:', colorPalette);
+    }
+    
+    const url = `${this.baseURL}${this.apiPath}/enhanced-style-renovation`;
+    console.log('API Request: POST', url);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    const data = await response.json();
+    console.log('API Response:', response.status, JSON.stringify(data));
+    
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'Enhanced style renovation failed');
+    }
+    
+    return data;
+  }
+
+  async createEnhancedStyleRenovation(
+    houseImageUri: string,
+    referenceImageUri?: string,
+    architecturalStyle?: string,
+    colorPalette?: string
+  ): Promise<{
+    success: boolean;
+    data: {
+      sessionId: string;
+      jobId: string;
+      status: string;
+      houseImageUrl?: string;
+      referenceImageUrl?: string;
+    };
+  }> {
+    const formData = new FormData();
+    
+    // Add house image
+    formData.append('houseImage', {
+      uri: houseImageUri,
+      type: 'image/jpeg',
+      name: 'house.jpg',
+    } as any);
+    
+    // Add reference image if provided
+    if (referenceImageUri) {
+      formData.append('referenceImage', {
+        uri: referenceImageUri,
+        type: 'image/jpeg',
+        name: 'reference.jpg',
+      } as any);
+    }
+    
+    // Add style parameters
+    if (architecturalStyle) {
+      formData.append('architecturalStyle', architecturalStyle);
+      console.log('Added architecturalStyle:', architecturalStyle);
+    }
+    if (colorPalette) {
+      formData.append('colorPalette', colorPalette);
+      console.log('Added colorPalette:', colorPalette);
+    }
+    
+    const url = `${this.baseURL}${this.apiPath}/enhanced-style-renovation`;
+    console.log('API Request: POST', url);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    const data = await response.json();
+    console.log('API Response:', response.status, JSON.stringify(data));
+    
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'Enhanced style renovation failed');
+    }
+    
+    return data;
+  }
+
+  // Get enhanced style renovation status
+  async getEnhancedStyleRenovationStatus(sessionId: string): Promise<{
+    success: boolean;
+    data: {
+      sessionId: string;
+      status: string;
+      hasPendingJobs: boolean;
+      generatedImage?: {
+        url: string;
+        filename: string;
+      };
+    };
+  }> {
+    const response = await fetch(`${this.baseURL}${this.apiPath}/enhanced-style-renovation/${sessionId}/status`);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'Failed to get status');
+    }
+    
+    return data;
+  }
 }
 
 // Export the appropriate client based on environment and availability
 const createApiClient = () => {
   // Always use the real API client now that backend is available
-  console.log('Using Real API Client: https://upcrib-backend.onrender.com');
-  return new UpCribAPIClient();
+  const baseURL = __DEV__ ? 'http://localhost:3001' : 'https://upcrib-backend.onrender.com';
+  console.log('Using Real API Client:', baseURL);
+  return new UpCribAPIClient(baseURL);
 };
 
 export const apiClient = createApiClient();

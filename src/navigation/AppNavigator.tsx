@@ -17,10 +17,10 @@ import MoodDetailScreen from '../screens/MoodDetailScreen';
 export type RootStackParamList = {
   Home: undefined;
   Upload: { sessionId: string };
-  ColorPalette: { sessionId: string };
-  EnvironmentThemes: { sessionId: string; selectedColors: number[] };
-  InspirationPhoto: { sessionId: string; selectedColors: number[]; selectedThemes: number[] };
-  DesignStyle: { sessionId: string; selectedColors: number[]; selectedThemes: number[]; hasInspirationPhoto: boolean };
+  ColorPalette: { sessionId: string; imageUri?: string };
+  EnvironmentThemes: { sessionId: string; selectedColors: number[]; imageUri?: string };
+  InspirationPhoto: { sessionId: string; selectedColors: number[]; selectedThemes: number[]; imageUri?: string };
+  DesignStyle: { sessionId: string; selectedColors: number[]; selectedThemes: number[]; hasInspirationPhoto: boolean; imageUri?: string };
   ExteriorOptions: { sessionId: string };
   Style: { sessionId: string; imageUrl?: string };
   Design: { sessionId: string; answers?: { [questionId: string]: string }; imageUrl?: string };
