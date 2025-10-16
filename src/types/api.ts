@@ -31,6 +31,7 @@ export interface GeneratedImageData {
   filename: string;
   extension: string;
   generatedAt: string;
+  url?: string; // Relative URL path for HTTP requests
 }
 
 export interface Question {

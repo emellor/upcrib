@@ -383,9 +383,28 @@ export class UpCribAPIClient {
       sessionId: string;
       status: string;
       hasPendingJobs: boolean;
-      generatedImage?: {
-        url: string;
+      styleData: {
+        architecturalStyle: string;
+        colorPalette: string;
+        customColors: string[] | null;
+        colors: string[];
+        referenceImagePath: string | null;
+        referenceImageOriginalName: string | null;
+      };
+      originalImage?: {
+        path: string;
         filename: string;
+        mimetype?: string;
+        size?: number;
+        uploadedAt?: string;
+        url: string;
+      };
+      generatedImage?: {
+        path: string;
+        filename: string;
+        extension?: string;
+        generatedAt?: string;
+        url: string;
       };
     };
   }> {

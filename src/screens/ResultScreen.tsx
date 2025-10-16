@@ -58,7 +58,29 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
   
   // Before/After slider state
   const [sliderPosition] = useState(new Animated.Value(0.5)); // Start at 50% (middle)
+  const [originalImageError, setOriginalImageError] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [enhancedStyleRenovationStatus, setEnhancedStyleRenovationStatus] = useState<{
+    sessionId: string;
+    status: string;
+    hasPendingJobs: boolean;
+    styleData?: any;
+    originalImage?: {
+      path: string;
+      filename: string;
+      mimetype?: string;
+      size?: number;
+      uploadedAt?: string;
+      url: string;
+    };
+    generatedImage?: {
+      path: string;
+      filename: string;
+      extension?: string;
+      generatedAt?: string;
+      url: string;
+    };
+  } | null>(null);
 
   // Pan responder for the before/after slider
   const panResponder = PanResponder.create({
@@ -123,16 +145,22 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
           const data = await apiClient.getEnhancedStyleRenovationStatus(sessionId);
           
           if (data.success) {
+            // Store the Enhanced Style Renovation status
+            setEnhancedStyleRenovationStatus(data.data);
+            
             // Update session data with enhanced style renovation status
             setSessionData(prevData => ({
               ...prevData!,
               status: data.data.status as any,
               hasPendingJobs: data.data.hasPendingJobs,
+              // Store the original image URL from enhanced style renovation response
+              imageUrl: data.data.originalImage?.url || prevData?.imageUrl,
               generatedImage: data.data.generatedImage ? {
                 path: data.data.generatedImage.url,
                 filename: data.data.generatedImage.filename,
                 extension: data.data.generatedImage.filename.split('.').pop() || 'jpg',
                 generatedAt: new Date().toISOString(),
+                url: data.data.generatedImage.url,
               } : undefined,
             }));
             
@@ -193,12 +221,54 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
     return () => backHandler.remove();
   }, []);
 
+  // Debug effect to log image URLs
+  useEffect(() => {
+    if (sessionData) {
+      const originalUrl = getOriginalImageUrl();
+      const generatedUrl = getImageUrl();
+      console.log('=== IMAGE URL DEBUG ===');
+      console.log('Original (Before) URL:', originalUrl);
+      console.log('Generated (After) URL:', generatedUrl);
+      console.log('URLs are different:', originalUrl !== generatedUrl);
+      console.log('=====================');
+    }
+  }, [sessionData]);
+
   const loadSessionData = async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await apiClient.getSessionState(sessionId);
       setSessionData(data);
+      
+      // Always try to get enhanced style renovation status to get proper image URLs
+      try {
+        console.log('Attempting to get Enhanced Style Renovation status...');
+        const enhancedData = await apiClient.getEnhancedStyleRenovationStatus(sessionId);
+        console.log('Enhanced Style Renovation status response:', enhancedData);
+        
+        if (enhancedData.success) {
+          // Store the Enhanced Style Renovation status
+          setEnhancedStyleRenovationStatus(enhancedData.data);
+          
+          console.log('Enhanced data originalImage:', enhancedData.data.originalImage);
+          // Update session data with the correct original image URL
+          setSessionData(prevData => ({
+            ...prevData!,
+            imageUrl: enhancedData.data.originalImage?.url,
+            generatedImage: enhancedData.data.generatedImage ? {
+              path: enhancedData.data.generatedImage.url,
+              filename: enhancedData.data.generatedImage.filename,
+              extension: enhancedData.data.generatedImage.filename.split('.').pop() || 'jpg',
+              generatedAt: new Date().toISOString(),
+              url: enhancedData.data.generatedImage.url,
+            } : prevData?.generatedImage,
+          }));
+        }
+      } catch (enhancedErr) {
+        console.log('Enhanced style renovation status error:', enhancedErr);
+        console.log('Enhanced style renovation status not available, using regular session data');
+      }
       
       // Load questions if available
       if (data.hasQuestions) {
@@ -353,17 +423,93 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const getImageUrl = () => {
+    console.log('Getting generated image URL...');
+    console.log('Enhanced Style Renovation Status:', enhancedStyleRenovationStatus);
+    
     if (propImageUrl) return propImageUrl;
+    
+    // 1. Try Enhanced Style Renovation status response first (BEST SOURCE)
+    if (enhancedStyleRenovationStatus?.generatedImage?.url) {
+      const url = `${apiClient.apiBaseURL}${enhancedStyleRenovationStatus.generatedImage.url}`;
+      console.log('✅ Using generatedImage URL from Enhanced Style Renovation status:', url);
+      return url;
+    }
+    
+    // 2. Fallback to sessionData
     if (sessionData?.generatedImage) {
-      // For enhanced style renovation, the path already contains the full URL path
+      // For enhanced style renovation, use the url field for HTTP requests
+      if (sessionData.generatedImage.url) {
+        const url = `${apiClient.apiBaseURL}${sessionData.generatedImage.url}`;
+        console.log('Using generated image URL from session data:', url);
+        return url;
+      }
+      // Fallback to path field (for compatibility)
       if (sessionData.generatedImage.path && sessionData.generatedImage.path.startsWith('/')) {
-        return `${apiClient.apiBaseURL}${sessionData.generatedImage.path}`;
+        const url = `${apiClient.apiBaseURL}${sessionData.generatedImage.path}`;
+        console.log('Using generated image URL (fallback path):', url);
+        return url;
       }
       // Fallback to generated folder for old format
-      return `${apiClient.apiBaseURL}/generated/${sessionData.generatedImage.filename}`;
+      const url = `${apiClient.apiBaseURL}/generated/${sessionData.generatedImage.filename}`;
+      console.log('Using generated image URL (old format):', url);
+      return url;
     }
+    console.log('❌ No generated image URL available');
     return null;
   };
+
+  const getOriginalImageUrl = () => {
+    console.log('Getting original image URL...');
+    console.log('SessionData:', sessionData);
+    console.log('Enhanced Style Renovation Status:', enhancedStyleRenovationStatus);
+    
+    // Try multiple approaches to find the correct original image URL
+    
+    // 1. Use the originalImage from Enhanced Style Renovation status (BEST SOURCE)
+    if (enhancedStyleRenovationStatus?.originalImage?.url) {
+      const url = `${apiClient.apiBaseURL}${enhancedStyleRenovationStatus.originalImage.url}`;
+      console.log('✅ Using originalImage URL from Enhanced Style Renovation status:', url);
+      return url;
+    }
+    
+    // 2. Use the imageUrl field from session data which should contain the correct uploaded image URL
+    if (sessionData?.imageUrl) {
+      const url = `${apiClient.apiBaseURL}${sessionData.imageUrl}`;
+      console.log('Trying imageUrl from session data:', url);
+      return url;
+    }
+    
+    // 3. Try sessionData.imageUrl if sessionData is available
+    if (sessionData?.imageUrl) {
+      const url = `${apiClient.apiBaseURL}${sessionData.imageUrl}`;
+      console.log('Trying imageUrl from sessionData:', url);
+      return url;
+    }
+    
+    // 4. Try to construct URL from the original route parameter if it contains useful info
+    if (originalImageUrl && !originalImageUrl.startsWith('file://')) {
+      console.log('Using originalImageUrl from route:', originalImageUrl);
+      return originalImageUrl;
+    }
+    
+    // 5. Fallback to constructing URL from image filename if imageUrl is not available
+    if (sessionData?.image?.filename) {
+      const url = `${apiClient.apiBaseURL}/uploads/${sessionData.image.filename}`;
+      console.log('Fallback original image URL from filename:', url);
+      return url;
+    }
+    
+    console.log('❌ No original image URL available - all methods failed');
+    return null;
+  };
+
+  // Reset image error when we get new Enhanced Style Renovation status with originalImage
+  useEffect(() => {
+    if (enhancedStyleRenovationStatus?.originalImage?.url && originalImageError) {
+      console.log('Enhanced Style Renovation status now has originalImage, resetting error state');
+      setOriginalImageError(false);
+    }
+  }, [enhancedStyleRenovationStatus?.originalImage?.url, originalImageError]);
 
   if (loading) {
     return (
@@ -440,7 +586,7 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {/* Image Display Card */}
             <View style={styles.imageCard}>
-              {originalImageUrl ? (
+              {getOriginalImageUrl() ? (
                 // Interactive Before & After Slider
                 <View style={styles.beforeAfterContainer}>
                   <Text style={styles.comparisonLabel}>Before & After</Text>
@@ -452,9 +598,15 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
                     <View style={styles.sliderImageContainer}>
                       {getImageUrl() ? (
                         <Image 
-                          source={{ uri: getImageUrl()! }} 
+                          key={`after-${getImageUrl()}`}
+                          source={{ 
+                            uri: getImageUrl()!,
+                            cache: 'reload' as any
+                          }} 
                           style={styles.sliderImage}
                           resizeMode="cover"
+                          onLoad={() => console.log('After image loaded:', getImageUrl())}
+                          onError={(error) => console.log('After image error:', error.nativeEvent.error)}
                         />
                       ) : (
                         <View style={styles.sliderPlaceholder}>
@@ -476,11 +628,36 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
                         }),
                       }
                     ]}>
-                      <Image 
-                        source={{ uri: `${apiClient.apiBaseURL}${originalImageUrl}` }} 
-                        style={styles.sliderImage}
-                        resizeMode="cover"
-                      />
+                      {getOriginalImageUrl() && !originalImageError ? (
+                        <Image 
+                          key={`before-${getOriginalImageUrl()}-${originalImageError}`}
+                          source={{ 
+                            uri: getOriginalImageUrl()!,
+                            cache: 'reload' as any
+                          }} 
+                          style={styles.sliderImage}
+                          resizeMode="cover"
+                          onLoad={() => {
+                            console.log('Before image loaded successfully:', getOriginalImageUrl());
+                            setOriginalImageError(false);
+                          }}
+                          onError={(error) => {
+                            console.log('Before image error:', error.nativeEvent.error);
+                            console.log('Failed URL:', getOriginalImageUrl());
+                            console.log('Setting originalImageError to true - will show placeholder');
+                            setOriginalImageError(true);
+                          }}
+                        />
+                      ) : (
+                        <View style={styles.sliderPlaceholder}>
+                          <Text style={styles.placeholderText}>
+                            {originalImageError ? 'Original image not found' : 'Original image not available'}
+                          </Text>
+                          <Text style={styles.placeholderSubtext}>
+                            Showing generated result
+                          </Text>
+                        </View>
+                      )}
                       <View style={styles.imageLabel}>
                         <Text style={styles.imageLabelText}>Before</Text>
                       </View>
@@ -529,10 +706,6 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
             <View style={styles.actionsBar}>
               <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
                 <Text style={styles.actionButtonText} numberOfLines={1}>Share</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.actionButton} onPress={handleEditAnswers}>
-                <Text style={styles.actionButtonText} numberOfLines={1}>Edit</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.actionButton} onPress={() => setShowInfoModal(true)}>
@@ -622,11 +795,11 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
                 {/* Before & After Reference Images */}
                 <View style={styles.editImageReference}>
                   <View style={styles.editImageRow}>
-                    {originalImageUrl && (
+                    {getOriginalImageUrl() && (
                       <View style={styles.editImageColumn}>
                         <Text style={styles.editImageLabel}>Original</Text>
                         <Image 
-                          source={{ uri: `${apiClient.apiBaseURL}${originalImageUrl}` }} 
+                          source={{ uri: getOriginalImageUrl()! }} 
                           style={styles.editReferenceImage}
                           resizeMode="cover"
                         />
@@ -785,13 +958,6 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
                     <View style={styles.infoRow}>
                       <Text style={styles.infoLabel}>Status:</Text>
                       <Text style={styles.infoValue}>Completed ✅</Text>
-                    </View>
-                    
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Questions Answered:</Text>
-                      <Text style={styles.infoValue}>
-                        {sessionData.questionsAnswered} of {sessionData.totalQuestions}
-                      </Text>
                     </View>
                     
                     {sessionData.generatedImage && (
@@ -1059,6 +1225,27 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 18, // Slightly smaller than container for border effect
+  },
+  sliderPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 18,
+  },
+  placeholderText: {
+    color: '#666',
+    fontSize: 16,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
+  placeholderSubtext: {
+    color: '#999',
+    fontSize: 14,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   sliderOverlay: {
     position: 'absolute',
