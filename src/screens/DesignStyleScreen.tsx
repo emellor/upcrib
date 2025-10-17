@@ -18,6 +18,7 @@ import { apiClient } from '../services/apiClient';
 import Theme from '../constants/theme';
 import GlobalStyles from '../constants/globalStyles';
 import { HistoryStorageService, DesignHistoryItem } from '../services/historyStorage';
+import RNFS from 'react-native-fs';
 
 type DesignStyleScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -143,6 +144,24 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         selectedColorPalette
       });
       
+      // Copy the temp file to a permanent location BEFORE creating history
+      // This prevents the "file doesn't exist" error when the temp file is deleted
+      let permanentImageUri = imageUri;
+      if (imageUri.startsWith('file://')) {
+        try {
+          const fileName = `upload_${sessionId}_${Date.now()}.jpg`;
+          const permanentPath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+          
+          console.log('Copying temp file to permanent location:', permanentPath);
+          await RNFS.copyFile(imageUri.replace('file://', ''), permanentPath);
+          permanentImageUri = `file://${permanentPath}`;
+          console.log('File copied successfully to:', permanentImageUri);
+        } catch (copyError) {
+          console.warn('Failed to copy temp file, using original URI:', copyError);
+          // Continue with original URI if copy fails
+        }
+      }
+      
       // Get the style name for display
       const selectedStyleName = architecturalStyles.find(s => s.id === selectedStyle)?.name || selectedStyle;
       
@@ -151,8 +170,8 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         id: `${sessionId}-${Date.now()}`,
         sessionId: sessionId,
         createdAt: new Date().toISOString(),
-        thumbnail: imageUri, // Use original image as thumbnail while generating
-        originalImage: imageUri,
+        thumbnail: permanentImageUri, // Use permanent path
+        originalImage: permanentImageUri, // Use permanent path
         status: 'generating',
         title: `${selectedStyleName} Design`,
       };
@@ -166,7 +185,7 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
       // Start the generation process in the background
       enhancedStyleRenovationApi.createAndWaitForCompletion(
         {
-          houseImageUri: imageUri,
+          houseImageUri: permanentImageUri, // Use permanent path for API call
           architecturalStyle: selectedStyle,
           colorPalette: selectedColorPalette
         },

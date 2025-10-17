@@ -62,7 +62,9 @@ export class HistoryStorageService {
       // Download the image
       if (imageUrl.startsWith('content://') || imageUrl.startsWith('file://')) {
         // Handle content:// or file:// URIs
-        await RNBlobUtil.fs.cp(imageUrl, localPath);
+        // Strip file:// prefix if present
+        const sourcePath = imageUrl.replace('file://', '');
+        await RNFS.copyFile(sourcePath, localPath);
       } else if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
         // Download from URL
         const downloadResult = await RNFS.downloadFile({
