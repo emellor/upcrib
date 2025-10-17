@@ -14,6 +14,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import Theme from '../constants/theme';
+import GlobalStyles from '../constants/globalStyles';
 import { HistoryStorageService, DesignHistoryItem } from '../services/historyStorage';
 
 type ExteriorOptionsScreenNavigationProp = StackNavigationProp<
@@ -153,26 +154,29 @@ const ExteriorOptionsScreen: React.FC<ExteriorOptionsScreenProps> = ({
   const selectionCount = selectedColors.length + selectedThemes.length + (hasInspirationPhoto ? 1 : 0);
 
   return (
-    <SafeAreaView style={componentStyles.container}>
+    <SafeAreaView style={GlobalStyles.screenContainer}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Header */}
-      <View style={componentStyles.header}>
+      <View style={GlobalStyles.header}>
         <TouchableOpacity 
-          style={componentStyles.backButton}
+          style={GlobalStyles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={componentStyles.backIcon}>←</Text>
+          <Text style={GlobalStyles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={componentStyles.title}>Exterior Design Options</Text>
+        <View style={GlobalStyles.headerContent}>
+          <Text style={GlobalStyles.headerTitle}>Exterior Design Options</Text>
+        </View>
         <View style={componentStyles.headerSpacer} />
       </View>
 
-      <ScrollView style={componentStyles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={GlobalStyles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={GlobalStyles.content}>
         {/* Color Swatches Section */}
-        <View style={componentStyles.section}>
-          <Text style={componentStyles.sectionTitle}>Color Palette</Text>
-          <Text style={componentStyles.sectionSubtitle}>Choose colors that inspire your exterior design</Text>
+        <View style={componentStyles.sectionSpacing}>
+          <Text style={GlobalStyles.sectionTitle}>Color Palette</Text>
+          <Text style={GlobalStyles.subtitle}>Choose colors that inspire your exterior design</Text>
           <View style={componentStyles.colorGrid}>
             {colorSwatches.map(swatch => (
               <View key={swatch.id} style={{ alignItems: 'center', marginBottom: 16 }}>
@@ -198,9 +202,9 @@ const ExteriorOptionsScreen: React.FC<ExteriorOptionsScreenProps> = ({
         </View>
 
         {/* Themes Section */}
-        <View style={componentStyles.section}>
-          <Text style={componentStyles.sectionTitle}>Environment Themes</Text>
-          <Text style={componentStyles.sectionSubtitle}>Choose themes that inspire your design vision</Text>
+        <View style={componentStyles.sectionSpacing}>
+          <Text style={GlobalStyles.sectionTitle}>Environment Themes</Text>
+          <Text style={GlobalStyles.subtitle}>Choose themes that inspire your design vision</Text>
           <View style={componentStyles.themeGrid}>
             {themes.map(theme => (
               <TouchableOpacity
@@ -220,9 +224,9 @@ const ExteriorOptionsScreen: React.FC<ExteriorOptionsScreenProps> = ({
         </View>
 
         {/* Inspiration Photo Section */}
-        <View style={componentStyles.section}>
-          <Text style={componentStyles.sectionTitle}>Inspiration Photo</Text>
-          <Text style={componentStyles.sectionSubtitle}>Upload a reference image to guide your design direction</Text>
+        <View style={componentStyles.sectionSpacing}>
+          <Text style={GlobalStyles.sectionTitle}>Inspiration Photo</Text>
+          <Text style={GlobalStyles.subtitle}>Upload a reference image to guide your design direction</Text>
           <TouchableOpacity
             style={[componentStyles.photoUpload, hasInspirationPhoto && componentStyles.photoUploaded]}
             onPress={handleAddInspirationPhoto}
@@ -242,9 +246,9 @@ const ExteriorOptionsScreen: React.FC<ExteriorOptionsScreenProps> = ({
         </View>
 
         {/* Style Section */}
-        <View style={componentStyles.section}>
-          <Text style={componentStyles.sectionTitle}>Design Style</Text>
-          <Text style={componentStyles.sectionSubtitle}>Select your preferred architectural style</Text>
+        <View style={componentStyles.sectionSpacing}>
+          <Text style={GlobalStyles.sectionTitle}>Design Style</Text>
+          <Text style={GlobalStyles.subtitle}>Select your preferred architectural style</Text>
           <View style={componentStyles.styleGrid}>
             {designStyles.map(style => (
               <TouchableOpacity
@@ -272,21 +276,22 @@ const ExteriorOptionsScreen: React.FC<ExteriorOptionsScreenProps> = ({
             ))}
           </View>
         </View>
+        </View>
       </ScrollView>
 
       {/* Generate Button */}
-      <View style={componentStyles.bottomContainer}>
+      <View style={GlobalStyles.bottomContainer}>
         {selectionCount > 0 && (
           <Text style={componentStyles.selectionSummary}>
             {selectionCount} preference{selectionCount !== 1 ? 's' : ''} selected
           </Text>
         )}
         <TouchableOpacity
-          style={[componentStyles.generateButton, !canGenerate && componentStyles.generateButtonDisabled]}
+          style={[GlobalStyles.nextButton, !canGenerate && GlobalStyles.nextButtonDisabled]}
           onPress={handleGenerate}
           disabled={loading}
         >
-          <Text style={[componentStyles.generateButtonText, !canGenerate && componentStyles.generateButtonTextDisabled]}>
+          <Text style={[GlobalStyles.nextButtonText, !canGenerate && GlobalStyles.nextButtonTextDisabled]}>
             {loading ? 'Creating Your Design...' : canGenerate ? 'Generate Design' : 'Select Preferences to Continue'}
           </Text>
         </TouchableOpacity>
@@ -295,75 +300,13 @@ const ExteriorOptionsScreen: React.FC<ExteriorOptionsScreenProps> = ({
   );
 };
 
+// Screen-specific styles only - common styles are in GlobalStyles
 const componentStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAFAFA',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 22,
-    backgroundColor: '#F8F8F8',
-  },
-  backIcon: {
-    fontSize: 20,
-    color: '#000000',
-  },
-  title: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000000',
-    textAlign: 'center',
-  },
   headerSpacer: {
     width: 44,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-  },
-  section: {
-    marginBottom: 40,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#000000',
-    marginBottom: 6,
-  },
-  sectionSubtitle: {
-    fontSize: 15,
-    color: '#666666',
-    marginBottom: 20,
-    lineHeight: 20,
+  sectionSpacing: {
+    marginBottom: 32,
   },
   colorGrid: {
     flexDirection: 'row',
@@ -387,11 +330,11 @@ const componentStyles = StyleSheet.create({
     elevation: 2,
   },
   selectedSwatch: {
-    borderColor: '#007AFF',
+    borderColor: Theme.colors.primary,
     transform: [{ scale: 1.1 }],
   },
   checkmark: {
-    color: '#007AFF',
+    color: Theme.colors.primary,
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -424,8 +367,8 @@ const componentStyles = StyleSheet.create({
     minHeight: 120,
   },
   selectedTheme: {
-    backgroundColor: '#E8F4FD',
-    borderColor: '#007AFF',
+    backgroundColor: Theme.colors.accentLight,
+    borderColor: Theme.colors.primary,
   },
   themeEmoji: {
     fontSize: 40,
@@ -455,8 +398,8 @@ const componentStyles = StyleSheet.create({
     alignItems: 'center',
   },
   photoUploaded: {
-    backgroundColor: '#E8F4FD',
-    borderColor: '#007AFF',
+    backgroundColor: Theme.colors.accentLight,
+    borderColor: Theme.colors.primary,
     borderStyle: 'solid',
   },
   uploadIcon: {
@@ -512,36 +455,12 @@ const componentStyles = StyleSheet.create({
   selectedStyleDescription: {
     color: '#CCCCCC',
   },
-  bottomContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
-  },
   selectionSummary: {
     fontSize: 14,
-    color: '#007AFF',
+    color: Theme.colors.primary,
     textAlign: 'center',
     marginBottom: 12,
     fontWeight: '500',
-  },
-  generateButton: {
-    ...Theme.buttons.primary,
-  },
-  generateButtonDisabled: {
-    ...Theme.buttons.disabled,
-  },
-  generateButtonText: {
-    ...Theme.buttons.primaryText,
-  },
-  generateButtonTextDisabled: {
-    color: '#A0A0A0',
   },
 });
 

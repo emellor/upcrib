@@ -197,14 +197,12 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
       {/* Content */}
       <ScrollView 
         style={GlobalStyles.scrollContainer}
-        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={GlobalStyles.content}>
           <Text style={GlobalStyles.subtitle}>
             Choose a color palette that best represents your exterior design vision
           </Text>
-        </View>
         
         {loading ? (
           <View style={GlobalStyles.loadingContainer}>
@@ -263,15 +261,16 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
             </Text>
           </View>
         )}
+        </View>
       </ScrollView>
 
       {/* Bottom Navigation */}
       <View style={GlobalStyles.bottomContainer}>
         <TouchableOpacity
-          style={[GlobalStyles.nextButton, !selectedPaletteId && GlobalStyles.nextButtonDisabled]}
+          style={GlobalStyles.nextButton}
           onPress={handleNext}
         >
-          <Text style={[GlobalStyles.nextButtonText, !selectedPaletteId && GlobalStyles.nextButtonTextDisabled]}>
+          <Text style={GlobalStyles.nextButtonText}>
             {selectedPaletteId ? 'Continue with Palette' : 'Skip for now'}
           </Text>
         </TouchableOpacity>
@@ -280,16 +279,16 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
   );
 };
 
+
+
+
 // Screen-specific styles only - common styles are in GlobalStyles
 const styles = StyleSheet.create({
-  scrollContent: {
-    paddingBottom: 20,
-  },
   paletteGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: 4,
+    marginTop: 16,
   },
   paletteCard: {
     width: '48%',

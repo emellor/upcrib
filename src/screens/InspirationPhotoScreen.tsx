@@ -219,7 +219,7 @@ const InspirationPhotoScreen: React.FC<InspirationPhotoScreenProps> = ({
           activeOpacity={0.8}
         >
           <Text style={GlobalStyles.nextButtonText}>
-            {hasInspirationPhoto ? '🎯 Continue with Photo' : '⏭️ Continue Without Photo'}
+            {hasInspirationPhoto ? 'Continue with Photo' : 'Continue Without Photo'}
           </Text>
         </TouchableOpacity>
       </View>

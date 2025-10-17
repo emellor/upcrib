@@ -212,15 +212,17 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={GlobalStyles.screenContainer}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Header */}
-      <View style={Theme.header.default}>
-        <TouchableOpacity onPress={handleBack} style={Theme.header.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+      <View style={GlobalStyles.header}>
+        <TouchableOpacity onPress={handleBack} style={GlobalStyles.backButton}>
+          <Text style={GlobalStyles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={Theme.header.title}>History</Text>
+        <View style={GlobalStyles.headerContent}>
+          <Text style={GlobalStyles.headerTitle}>History</Text>
+        </View>
         <TouchableOpacity 
           onPress={handleClearHistory} 
           style={styles.clearButton}
@@ -235,15 +237,15 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
       {/* Content */}
       <View style={styles.content}>
         {loading ? (
-          <View style={styles.loadingContainer}>
+          <View style={GlobalStyles.loadingContainer}>
             <ActivityIndicator size="large" color={Theme.colors.primary} />
-            <Text style={styles.loadingText}>Loading your designs...</Text>
+            <Text style={GlobalStyles.loadingText}>Loading your designs...</Text>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={refreshHistory}>
-              <Text style={styles.retryButtonText}>Try Again</Text>
+            <TouchableOpacity style={GlobalStyles.nextButton} onPress={refreshHistory}>
+              <Text style={GlobalStyles.nextButtonText}>Try Again</Text>
             </TouchableOpacity>
           </View>
         ) : history.length === 0 ? (
@@ -255,10 +257,10 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
             </Text>
             
             <TouchableOpacity 
-              style={Theme.buttons.primary}
+              style={GlobalStyles.nextButton}
               onPress={() => navigation.navigate('Home')}
             >
-              <Text style={Theme.buttons.primaryText}>Start New Project</Text>
+              <Text style={GlobalStyles.nextButtonText}>Start New Project</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -361,15 +363,8 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
   );
 };
 
+// Screen-specific styles only - common styles are in GlobalStyles
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Theme.colors.surface,
-  },
-  backButtonText: {
-    fontSize: 20,
-    color: Theme.colors.text,
-  },
   clearButton: {
     padding: 8,
   },
@@ -385,16 +380,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: Theme.spacing.lg,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: Theme.spacing.md,
-    fontSize: Theme.typography.fontSizes.base,
-    color: Theme.colors.textSecondary,
-  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -406,13 +391,6 @@ const styles = StyleSheet.create({
     color: Theme.colors.error,
     textAlign: 'center',
     marginBottom: Theme.spacing.lg,
-  },
-  retryButton: {
-    ...Theme.buttons.primary,
-    paddingHorizontal: Theme.spacing.lg,
-  },
-  retryButtonText: {
-    ...Theme.buttons.primaryText,
   },
   sectionHeader: {
     marginTop: Theme.spacing.lg,

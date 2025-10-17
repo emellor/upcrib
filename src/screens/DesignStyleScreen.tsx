@@ -16,6 +16,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { enhancedStyleRenovationApi } from '../services/enhancedStyleRenovationApi';
 import { apiClient } from '../services/apiClient';
 import Theme from '../constants/theme';
+import GlobalStyles from '../constants/globalStyles';
 
 type DesignStyleScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -174,45 +175,45 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={GlobalStyles.screenContainer}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={GlobalStyles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={GlobalStyles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={GlobalStyles.backIcon}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.stepIndicator}>Step 3 of 3</Text>
-          <Text style={styles.title}>Design Style</Text>
+        <View style={GlobalStyles.headerContent}>
+          <Text style={GlobalStyles.stepIndicator}>Step 3 of 3</Text>
+          <Text style={GlobalStyles.headerTitle}>Design Style</Text>
         </View>
         <View style={{ width: 44 }} />
       </View>
 
       {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '100%' }]} />
+      <View style={GlobalStyles.progressContainer}>
+        <View style={GlobalStyles.progressBar}>
+          <View style={[GlobalStyles.progressFill, { width: '100%' }]} />
         </View>
       </View>
 
       {/* Content */}
       <ScrollView 
-        style={styles.content}
-        contentContainerStyle={styles.scrollContent}
+        style={GlobalStyles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.subtitle}>
+        <View style={GlobalStyles.content}>
+        <Text style={GlobalStyles.subtitle}>
           Select your preferred architectural style
         </Text>
         
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <Text style={styles.loadingText}>Loading available styles...</Text>
+          <View style={GlobalStyles.loadingContainer}>
+            <ActivityIndicator size="large" color={Theme.colors.primary} />
+            <Text style={GlobalStyles.loadingText}>Loading available styles...</Text>
           </View>
         ) : (
           <>
@@ -251,10 +252,11 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
             </View>
           </>
         )}
+        </View>
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomContainer}>
+      <View style={GlobalStyles.bottomContainer}>
         <View style={styles.summaryContainer}>
           <Text style={styles.summaryTitle}>Your Design Preferences:</Text>
           <Text style={styles.summaryText}>
@@ -263,10 +265,10 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
           </Text>
         </View>
         <TouchableOpacity
-          style={styles.generateButton}
+          style={GlobalStyles.nextButton}
           onPress={handleGenerate}
         >
-          <Text style={styles.generateButtonText}>
+          <Text style={GlobalStyles.nextButtonText}>
             Generate Design
           </Text>
         </TouchableOpacity>
@@ -275,73 +277,8 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
   );
 };
 
+// Screen-specific styles only - common styles are in GlobalStyles
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Theme.colors.background,
-  },
-  header: {
-    ...Theme.header.default,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    ...Theme.header.backButton,
-  },
-  backIcon: {
-    fontSize: 20,
-    color: Theme.colors.text,
-  },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 60,
-  },
-  stepIndicator: {
-    fontSize: 14,
-    color: Theme.colors.textSecondary,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700' as any,
-    color: Theme.colors.text,
-    textAlign: 'center',
-  },
-  progressContainer: {
-    paddingHorizontal: Theme.spacing.xl,
-    paddingVertical: Theme.spacing.base,
-    backgroundColor: Theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.border,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: Theme.colors.borderSecondary,
-    borderRadius: 2,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: Theme.colors.primary,
-    borderRadius: 2,
-  },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 40,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#666666',
-    textAlign: 'center',
-    marginBottom: 40,
-    lineHeight: 24,
-  },
   styleGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -390,13 +327,6 @@ const styles = StyleSheet.create({
   selectedStyleDescription: {
     color: '#CCCCCC',
   },
-  bottomContainer: {
-    paddingHorizontal: Theme.spacing.xl,
-    paddingVertical: Theme.spacing.xl,
-    backgroundColor: Theme.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: Theme.colors.border,
-  },
   summaryContainer: {
     backgroundColor: '#F8F9FA',
     borderRadius: 12,
@@ -413,24 +343,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666666',
     lineHeight: 18,
-  },
-  generateButton: {
-    ...Theme.buttons.primary,
-  },
-  generateButtonText: {
-    ...Theme.buttons.primaryText,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#64748B',
-    textAlign: 'center',
   },
   errorContainer: {
     backgroundColor: '#FEF2F2',
