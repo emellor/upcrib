@@ -17,6 +17,7 @@ import { enhancedStyleRenovationApi } from '../services/enhancedStyleRenovationA
 import { apiClient } from '../services/apiClient';
 import Theme from '../constants/theme';
 import GlobalStyles from '../constants/globalStyles';
+import { HistoryStorageService, DesignHistoryItem } from '../services/historyStorage';
 
 type DesignStyleScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -142,8 +143,28 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         selectedColorPalette
       });
       
-      // Use the Enhanced Style Renovation API directly
-      const result = await enhancedStyleRenovationApi.createAndWaitForCompletion(
+      // Get the style name for display
+      const selectedStyleName = architecturalStyles.find(s => s.id === selectedStyle)?.name || selectedStyle;
+      
+      // Create a history item with "generating" status
+      const historyItem: DesignHistoryItem = {
+        id: `${sessionId}-${Date.now()}`,
+        sessionId: sessionId,
+        createdAt: new Date().toISOString(),
+        thumbnail: imageUri, // Use original image as thumbnail while generating
+        originalImage: imageUri,
+        status: 'generating',
+        title: `${selectedStyleName} Design`,
+      };
+      
+      // Save to history with generating status
+      await HistoryStorageService.saveDesignToHistory(historyItem);
+      
+      // Navigate to History screen to show the generating design
+      navigation.navigate('History' as any);
+      
+      // Start the generation process in the background
+      enhancedStyleRenovationApi.createAndWaitForCompletion(
         {
           houseImageUri: imageUri,
           architecturalStyle: selectedStyle,
@@ -151,24 +172,35 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         },
         (status) => {
           console.log('Generation status:', status);
-          // Could update UI here with status updates
         }
-      );
-      
-      console.log('Enhanced style renovation completed:', result);
-      
-      // Navigate to ResultScreen with the result
-      navigation.navigate('Result', {
-        sessionId: result.sessionId,
-        imageUrl: result.imageUrl,
-        originalImageUrl: imageUri,
+      ).then(async (result) => {
+        console.log('Enhanced style renovation completed:', result);
+        
+        // Update the history item with completed status and generated image
+        const updatedItem: DesignHistoryItem = {
+          ...historyItem,
+          status: 'completed',
+          thumbnail: result.imageUrl, // Use generated image as thumbnail
+        };
+        
+        await HistoryStorageService.saveDesignToHistory(updatedItem);
+      }).catch(async (error) => {
+        console.error('Generate renovation error:', error);
+        
+        // Update the history item with failed status
+        const failedItem: DesignHistoryItem = {
+          ...historyItem,
+          status: 'failed',
+        };
+        
+        await HistoryStorageService.saveDesignToHistory(failedItem);
       });
       
     } catch (error: any) {
-      console.error('Generate renovation error:', error);
+      console.error('Failed to start generation:', error);
       Alert.alert(
         'Generation Failed',
-        error.message || 'Failed to generate renovation. Please try again.',
+        error.message || 'Failed to start design generation. Please try again.',
         [{ text: 'OK' }]
       );
     }
@@ -206,9 +238,13 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         showsVerticalScrollIndicator={false}
       >
         <View style={GlobalStyles.content}>
-        <Text style={GlobalStyles.subtitle}>
-          Select your preferred architectural style
-        </Text>
+          {/* Section Header */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Choose Your Architectural Style</Text>
+            <Text style={GlobalStyles.subtitle}>
+              Select the style that best matches your vision for your home's exterior
+            </Text>
+          </View>
         
         {loading ? (
           <View style={GlobalStyles.loadingContainer}>
@@ -224,6 +260,7 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
               </View>
             )}
             
+            {/* Style Grid */}
             <View style={styles.styleGrid}>
               {architecturalStyles.map(style => (
                 <TouchableOpacity
@@ -233,8 +270,14 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
                     selectedStyle === style.id && styles.selectedStyle,
                   ]}
                   onPress={() => setSelectedStyle(style.id)}
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.styleEmoji}>🏠</Text>
+                  <View style={[
+                    styles.iconContainer,
+                    selectedStyle === style.id && styles.selectedIconContainer,
+                  ]}>
+                    <Text style={styles.styleEmoji}>🏠</Text>
+                  </View>
                   <Text style={[
                     styles.styleText,
                     selectedStyle === style.id && styles.selectedStyleText,
@@ -247,6 +290,11 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
                   ]}>
                     {style.description}
                   </Text>
+                  {selectedStyle === style.id && (
+                    <View style={styles.selectedBadge}>
+                      <Text style={styles.selectedBadgeText}>✓</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               ))}
             </View>
@@ -257,19 +305,49 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
 
       {/* Bottom Navigation */}
       <View style={GlobalStyles.bottomContainer}>
-        <View style={styles.summaryContainer}>
-          <Text style={styles.summaryTitle}>Your Design Preferences:</Text>
-          <Text style={styles.summaryText}>
-            • {selectedColors?.length || 0} color palettes • {selectedStyle} style
-            {hasInspirationPhoto ? ' • Inspiration photo' : ''}
-          </Text>
-        </View>
+{/*         {selectedStyle && (
+          <View style={styles.summaryContainer}>
+            <View style={styles.summaryHeader}>
+              <Text style={styles.summaryIcon}>✨</Text>
+              <Text style={styles.summaryTitle}>Your Design Preferences</Text>
+            </View>
+            <View style={styles.summaryContent}>
+              {selectedColors && selectedColors.length > 0 && (
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryItemIcon}>🎨</Text>
+                  <Text style={styles.summaryItemText}>
+                    {selectedColors.length} color {selectedColors.length === 1 ? 'palette' : 'palettes'}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryItemIcon}>🏛️</Text>
+                <Text style={styles.summaryItemText}>
+                  {architecturalStyles.find(s => s.id === selectedStyle)?.name || selectedStyle}
+                </Text>
+              </View>
+              {hasInspirationPhoto && (
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryItemIcon}>📸</Text>
+                  <Text style={styles.summaryItemText}>Inspiration photo included</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )} */}
         <TouchableOpacity
-          style={GlobalStyles.nextButton}
+          style={[
+            GlobalStyles.nextButton,
+            !selectedStyle && GlobalStyles.nextButtonDisabled
+          ]}
           onPress={handleGenerate}
+          disabled={!selectedStyle}
         >
-          <Text style={GlobalStyles.nextButtonText}>
-            Generate Design
+          <Text style={[
+            GlobalStyles.nextButtonText,
+            !selectedStyle && GlobalStyles.nextButtonTextDisabled
+          ]}>
+            {selectedStyle ? 'Generate Design' : 'Select a Style to Continue'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -279,76 +357,152 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
 
 // Screen-specific styles only - common styles are in GlobalStyles
 const styles = StyleSheet.create({
+  sectionHeader: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: Theme.colors.text,
+    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
   styleGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    marginTop: 8,
   },
   styleCard: {
     width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 20,
     padding: 20,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    borderWidth: 2.5,
+    borderColor: Theme.colors.border,
+    shadowColor: Theme.colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
     elevation: 3,
     alignItems: 'center',
-    minHeight: 140,
+    minHeight: 160,
     marginBottom: 16,
+    position: 'relative',
   },
   selectedStyle: {
-    backgroundColor: '#000000',
-    borderColor: '#000000',
+    backgroundColor: Theme.colors.accentLight,
+    borderColor: Theme.colors.primary,
+    borderWidth: 2.5,
+    shadowColor: Theme.colors.primary,
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 5,
+    transform: [{ scale: 1.02 }],
+  },
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Theme.colors.backgroundSecondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  selectedIconContainer: {
+    backgroundColor: Theme.colors.primaryLight,
   },
   styleEmoji: {
     fontSize: 32,
-    marginBottom: 12,
   },
   styleText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#000000',
-    marginBottom: 8,
+    color: Theme.colors.text,
+    marginBottom: 6,
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
   selectedStyleText: {
-    color: '#FFFFFF',
+    color: Theme.colors.primary,
   },
   styleDescription: {
-    fontSize: 12,
-    color: '#666666',
-    lineHeight: 16,
+    fontSize: 11,
+    color: Theme.colors.textSecondary,
+    lineHeight: 15,
     textAlign: 'center',
   },
   selectedStyleDescription: {
-    color: '#CCCCCC',
+    color: Theme.colors.textSecondary,
+  },
+  selectedBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Theme.colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  selectedBadgeText: {
+    color: Theme.colors.textInverse,
+    fontSize: 16,
+    fontWeight: '700',
   },
   summaryContainer: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: Theme.colors.accentLight,
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Theme.colors.primaryLight,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  summaryIcon: {
+    fontSize: 20,
+    marginRight: 8,
   },
   summaryTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 4,
+    fontSize: 16,
+    fontWeight: '700',
+    color: Theme.colors.text,
+    letterSpacing: -0.3,
   },
-  summaryText: {
-    fontSize: 13,
-    color: '#666666',
-    lineHeight: 18,
+  summaryContent: {
+    gap: 8,
+  },
+  summaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  summaryItemIcon: {
+    fontSize: 16,
+    marginRight: 10,
+    width: 24,
+    textAlign: 'center',
+  },
+  summaryItemText: {
+    fontSize: 14,
+    color: Theme.colors.textSecondary,
+    fontWeight: '500',
+    flex: 1,
   },
   errorContainer: {
     backgroundColor: '#FEF2F2',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 24,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#FCA5A5',
   },
