@@ -46,12 +46,12 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
     
     if (hasGenerating) {
       const interval = setInterval(() => {
-        refreshHistory();
+        refreshHistory(true); // Silent refresh - no loading indicator
       }, 3000); // Check every 3 seconds
       
       return () => clearInterval(interval);
     }
-  }, [history, refreshHistory]);
+  }, [history]); // Remove refreshHistory from deps - it's stable from useCallback
 
   const handleBack = () => {
     navigation.goBack();
@@ -244,7 +244,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
         ) : error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={GlobalStyles.nextButton} onPress={refreshHistory}>
+            <TouchableOpacity style={GlobalStyles.nextButton} onPress={() => refreshHistory()}>
               <Text style={GlobalStyles.nextButtonText}>Try Again</Text>
             </TouchableOpacity>
           </View>
@@ -281,7 +281,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
               columnWrapperStyle={styles.row}
               showsVerticalScrollIndicator={false}
               refreshing={loading}
-              onRefresh={refreshHistory}
+              onRefresh={() => refreshHistory()}
             />
           </>
         )}

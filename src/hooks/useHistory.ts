@@ -5,7 +5,7 @@ export interface UseHistoryReturn {
   history: DesignHistoryItem[];
   loading: boolean;
   error: string | null;
-  refreshHistory: () => Promise<void>;
+  refreshHistory: (silent?: boolean) => Promise<void>;
   saveDesign: (design: DesignHistoryItem) => Promise<void>;
   deleteDesign: (sessionId: string) => Promise<void>;
   clearHistory: () => Promise<void>;
@@ -17,9 +17,12 @@ export const useHistory = (): UseHistoryReturn => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshHistory = useCallback(async () => {
+  const refreshHistory = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      // Only show loading indicator if not a silent refresh
+      if (!silent) {
+        setLoading(true);
+      }
       setError(null);
       const historyData = await HistoryStorageService.getDesignHistory();
       setHistory(historyData);
@@ -27,7 +30,9 @@ export const useHistory = (): UseHistoryReturn => {
       setError('Failed to load design history');
       console.error('Error loading history:', err);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, []);
 
