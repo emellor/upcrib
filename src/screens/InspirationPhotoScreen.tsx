@@ -13,6 +13,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import Theme from '../constants/theme';
+import GlobalStyles from '../constants/globalStyles';
 
 type InspirationPhotoScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -84,41 +85,41 @@ const InspirationPhotoScreen: React.FC<InspirationPhotoScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={GlobalStyles.screenContainer}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={GlobalStyles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={GlobalStyles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={GlobalStyles.backIcon}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.stepIndicator}>Step 2 of 3</Text>
-          <Text style={styles.title}>Inspiration Photo</Text>
+        <View style={GlobalStyles.headerContent}>
+          <Text style={GlobalStyles.stepIndicator}>Step 2 of 3</Text>
+          <Text style={GlobalStyles.headerTitle}>Inspiration Photo</Text>
         </View>
         <TouchableOpacity onPress={handleSkip}>
-          <Text style={styles.skipButton}>Skip</Text>
+          <Text style={GlobalStyles.skipButton}>Skip</Text>
         </TouchableOpacity>
       </View>
 
       {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '67%' }]} />
+      <View style={GlobalStyles.progressContainer}>
+        <View style={GlobalStyles.progressBar}>
+          <View style={[GlobalStyles.progressFill, { width: '67%' }]} />
         </View>
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.mainDescription}>
+      <ScrollView style={GlobalStyles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={GlobalStyles.content}>
+          <View style={GlobalStyles.descriptionContainer}>
+            <Text style={GlobalStyles.mainTitle}>
               Help our AI understand your vision
             </Text>
-            <Text style={styles.subtitle}>
+            <Text style={GlobalStyles.subtitle}>
               Upload a photo that captures the style, colors, or architectural features you love. This will guide our AI to create designs that match your taste.
             </Text>
           </View>
@@ -161,48 +162,48 @@ const InspirationPhotoScreen: React.FC<InspirationPhotoScreenProps> = ({
             )}
           </TouchableOpacity>
 
-          <View style={styles.benefitsContainer}>
-            <Text style={styles.benefitsTitle}>Why add an inspiration photo?</Text>
-            <View style={styles.benefitItem}>
-              <Text style={styles.benefitIcon}>🎯</Text>
-              <Text style={styles.benefitText}>Get more accurate design suggestions</Text>
+          <View style={GlobalStyles.card}>
+            <Text style={GlobalStyles.sectionTitle}>Why add an inspiration photo?</Text>
+            <View style={GlobalStyles.listItem}>
+              <Text style={GlobalStyles.listItemIcon}>🎯</Text>
+              <Text style={GlobalStyles.listItemText}>Get more accurate design suggestions</Text>
             </View>
-            <View style={styles.benefitItem}>
-              <Text style={styles.benefitIcon}>🎨</Text>
-              <Text style={styles.benefitText}>AI learns your style preferences</Text>
+            <View style={GlobalStyles.listItem}>
+              <Text style={GlobalStyles.listItemIcon}>🎨</Text>
+              <Text style={GlobalStyles.listItemText}>AI learns your style preferences</Text>
             </View>
-            <View style={styles.benefitItem}>
-              <Text style={styles.benefitIcon}>⚡</Text>
-              <Text style={styles.benefitText}>Faster design iterations</Text>
+            <View style={GlobalStyles.listItem}>
+              <Text style={GlobalStyles.listItemIcon}>⚡</Text>
+              <Text style={GlobalStyles.listItemText}>Faster design iterations</Text>
             </View>
           </View>
 
-          <View style={styles.tipContainer}>
-            <Text style={styles.tipTitle}>💡 Pro Tips for Best Results</Text>
-            <View style={styles.tipsList}>
-              <View style={styles.tipItem}>
-                <Text style={styles.tipBullet}>•</Text>
-                <Text style={styles.tipText}>Use high-quality, well-lit exterior photos</Text>
+          <View style={GlobalStyles.card}>
+            <Text style={GlobalStyles.sectionTitle}>💡 Pro Tips for Best Results</Text>
+            <View style={GlobalStyles.tipsList}>
+              <View style={GlobalStyles.tipItem}>
+                <Text style={GlobalStyles.tipBullet}>•</Text>
+                <Text style={GlobalStyles.tipText}>Use high-quality, well-lit exterior photos</Text>
               </View>
-              <View style={styles.tipItem}>
-                <Text style={styles.tipBullet}>•</Text>
-                <Text style={styles.tipText}>Focus on architectural styles you admire</Text>
+              <View style={GlobalStyles.tipItem}>
+                <Text style={GlobalStyles.tipBullet}>•</Text>
+                <Text style={GlobalStyles.tipText}>Focus on architectural styles you admire</Text>
               </View>
-              <View style={styles.tipItem}>
-                <Text style={styles.tipBullet}>•</Text>
-                <Text style={styles.tipText}>Include color schemes that inspire you</Text>
+              <View style={GlobalStyles.tipItem}>
+                <Text style={GlobalStyles.tipBullet}>•</Text>
+                <Text style={GlobalStyles.tipText}>Include color schemes that inspire you</Text>
               </View>
-              <View style={styles.tipItem}>
-                <Text style={styles.tipBullet}>•</Text>
-                <Text style={styles.tipText}>Avoid busy backgrounds or poor lighting</Text>
+              <View style={GlobalStyles.tipItem}>
+                <Text style={GlobalStyles.tipBullet}>•</Text>
+                <Text style={GlobalStyles.tipText}>Avoid busy backgrounds or poor lighting</Text>
               </View>
             </View>
           </View>
 
           {!hasInspirationPhoto && (
-            <View style={styles.skipInfoContainer}>
-              <Text style={styles.skipInfoTitle}>No photo? No problem!</Text>
-              <Text style={styles.skipInfoText}>
+            <View style={GlobalStyles.infoContainer}>
+              <Text style={GlobalStyles.infoTitle}>No photo? No problem!</Text>
+              <Text style={GlobalStyles.infoText}>
                 You can skip this step and our AI will use your selected colors and design preferences to create beautiful exterior designs.
               </Text>
             </View>
@@ -211,13 +212,13 @@ const InspirationPhotoScreen: React.FC<InspirationPhotoScreenProps> = ({
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomContainer}>
+      <View style={GlobalStyles.bottomContainer}>
         <TouchableOpacity
-          style={styles.nextButton}
+          style={GlobalStyles.nextButton}
           onPress={handleNext}
           activeOpacity={0.8}
         >
-          <Text style={styles.nextButtonText}>
+          <Text style={GlobalStyles.nextButtonText}>
             {hasInspirationPhoto ? '🎯 Continue with Photo' : '⏭️ Continue Without Photo'}
           </Text>
         </TouchableOpacity>
@@ -226,91 +227,8 @@ const InspirationPhotoScreen: React.FC<InspirationPhotoScreenProps> = ({
   );
 };
 
+// Screen-specific styles only - common styles are in GlobalStyles
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Theme.colors.background,
-  },
-  header: {
-    ...Theme.header.default,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    ...Theme.header.backButton,
-  },
-  backIcon: {
-    fontSize: 20,
-    color: Theme.colors.text,
-  },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 60,
-  },
-  stepIndicator: {
-    fontSize: 14,
-    color: Theme.colors.textSecondary,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700' as any,
-    color: Theme.colors.text,
-    textAlign: 'center',
-  },
-  skipButton: {
-    color: Theme.colors.primary,
-    fontSize: Theme.typography.fontSizes.base,
-    fontWeight: '500' as any,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  progressContainer: {
-    paddingHorizontal: Theme.spacing.xl,
-    paddingVertical: Theme.spacing.base,
-    backgroundColor: Theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.border,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: Theme.colors.borderSecondary,
-    borderRadius: 2,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: Theme.colors.primary,
-    borderRadius: 2,
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 32,
-  },
-  descriptionContainer: {
-    marginBottom: 32,
-  },
-  mainDescription: {
-    fontSize: 28,
-    fontWeight: '700' as any,
-    color: Theme.colors.text,
-    textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 34,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: Theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 8,
-  },
   photoUpload: {
     minHeight: 220,
     backgroundColor: '#FFFFFF',
@@ -416,108 +334,6 @@ const styles = StyleSheet.create({
     color: Theme.colors.textInverse,
     fontSize: 14,
     fontWeight: '600' as any,
-  },
-  benefitsContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  benefitsTitle: {
-    fontSize: 18,
-    fontWeight: '700' as any,
-    color: Theme.colors.text,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  benefitItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  benefitIcon: {
-    fontSize: 20,
-    marginRight: 12,
-    width: 24,
-  },
-  benefitText: {
-    fontSize: 15,
-    color: Theme.colors.text,
-    flex: 1,
-    lineHeight: 20,
-  },
-  tipContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  tipTitle: {
-    fontSize: 16,
-    fontWeight: '600' as any,
-    color: Theme.colors.text,
-    marginBottom: 16,
-  },
-  tipsList: {
-    gap: 8,
-  },
-  tipItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  tipBullet: {
-    fontSize: 16,
-    color: Theme.colors.primary,
-    marginRight: 8,
-    marginTop: 2,
-    fontWeight: '700' as any,
-  },
-  tipText: {
-    fontSize: 14,
-    color: Theme.colors.textSecondary,
-    flex: 1,
-    lineHeight: 20,
-  },
-  skipInfoContainer: {
-    backgroundColor: Theme.colors.surfaceSecondary,
-    borderRadius: 16,
-    padding: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: Theme.colors.primary,
-  },
-  skipInfoTitle: {
-    fontSize: 16,
-    fontWeight: '600' as any,
-    color: Theme.colors.text,
-    marginBottom: 8,
-  },
-  skipInfoText: {
-    fontSize: 14,
-    color: Theme.colors.textSecondary,
-    lineHeight: 20,
-  },
-  bottomContainer: {
-    paddingHorizontal: Theme.spacing.xl,
-    paddingVertical: Theme.spacing.xl,
-    backgroundColor: Theme.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: Theme.colors.border,
-  },
-  nextButton: {
-    ...Theme.buttons.primary,
-  },
-  nextButtonText: {
-    ...Theme.buttons.primaryText,
   },
 });
 

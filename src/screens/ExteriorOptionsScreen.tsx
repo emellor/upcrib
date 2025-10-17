@@ -14,6 +14,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import Theme from '../constants/theme';
+import { HistoryStorageService, DesignHistoryItem } from '../services/historyStorage';
 
 type ExteriorOptionsScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -102,19 +103,50 @@ const ExteriorOptionsScreen: React.FC<ExteriorOptionsScreenProps> = ({
 
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Get the original image URL from route params if available
+      const originalImageUrl = route.params.imageUri || 'https://picsum.photos/400/300';
+      
+      // Create a history item with "generating" status
+      const historyItem: DesignHistoryItem = {
+        id: `${sessionId}-${Date.now()}`,
+        sessionId: sessionId,
+        createdAt: new Date().toISOString(),
+        thumbnail: originalImageUrl, // Use original image as thumbnail while generating
+        originalImage: originalImageUrl,
+        status: 'generating',
+        title: `Design ${sessionId.slice(-6)}`,
+      };
+      
+      // Save to history with generating status
+      await HistoryStorageService.saveDesignToHistory(historyItem);
+      
+      // Navigate to History screen to show the generating design
+      navigation.navigate('History' as any);
+      
+      // Simulate API call - in real implementation, this would be an actual API call
+      setTimeout(async () => {
+        try {
+          // Update the history item with completed status and generated image
+          const updatedItem: DesignHistoryItem = {
+            ...historyItem,
+            status: 'completed',
+            thumbnail: 'https://picsum.photos/400/300?random=' + Date.now(), // Generated image
+          };
+          
+          await HistoryStorageService.saveDesignToHistory(updatedItem);
+          setLoading(false);
+        } catch (error) {
+          console.error('Failed to update history with generated image:', error);
+          setLoading(false);
+        }
+      }, 5000); // 5 seconds to simulate generation
+      
+    } catch (error) {
+      console.error('Failed to save to history:', error);
+      Alert.alert('Error', 'Failed to start design generation. Please try again.');
       setLoading(false);
-      // Navigate to results screen with dummy data
-      navigation.navigate('Result', {
-        sessionId,
-        results: [
-          { id: 1, imageUrl: 'dummy-result-1.jpg' },
-          { id: 2, imageUrl: 'dummy-result-2.jpg' },
-          { id: 3, imageUrl: 'dummy-result-3.jpg' },
-        ],
-      });
-    }, 2000);
+    }
   };
 
   const canGenerate = selectedColors.length > 0 || selectedThemes.length > 0 || hasInspirationPhoto;

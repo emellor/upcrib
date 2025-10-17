@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { Theme } from '../constants/theme';
+import GlobalStyles from '../constants/globalStyles';
 import BottomNavigation from '../components/BottomNavigation';
 import { useHistory } from '../hooks/useHistory';
 import { DesignHistoryItem, HistoryStorageService } from '../services/historyStorage';
@@ -38,6 +39,19 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+
+  // Auto-refresh when there are generating designs
+  useEffect(() => {
+    const hasGenerating = history.some(item => item.status === 'generating');
+    
+    if (hasGenerating) {
+      const interval = setInterval(() => {
+        refreshHistory();
+      }, 3000); // Check every 3 seconds
+      
+      return () => clearInterval(interval);
+    }
+  }, [history, refreshHistory]);
 
   const handleBack = () => {
     navigation.goBack();
@@ -159,19 +173,28 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
       ? { uri: `file://${item.localThumbnailPath}` }
       : { uri: item.thumbnail };
 
+    const isGenerating = item.status === 'generating';
+
     return (
       <TouchableOpacity
         style={styles.historyItem}
-        onPress={() => handleItemPress(item)}
+        onPress={() => !isGenerating && handleItemPress(item)}
         onLongPress={() => handleItemLongPress(item)}
-        activeOpacity={0.7}
+        activeOpacity={isGenerating ? 1 : 0.7}
+        disabled={isGenerating}
       >
         <View style={styles.imageContainer}>
           <Image
             source={thumbnailSource}
-            style={styles.thumbnailImage}
+            style={[styles.thumbnailImage, isGenerating && styles.generatingImage]}
             resizeMode="cover"
           />
+          {item.status === 'generating' && (
+            <View style={styles.generatingOverlay}>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text style={styles.generatingText}>Generating...</Text>
+            </View>
+          )}
           {item.status === 'failed' && (
             <View style={styles.failedOverlay}>
               <Text style={styles.failedText}>Failed</Text>
@@ -429,6 +452,25 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: Theme.colors.backgroundSecondary,
+  },
+  generatingImage: {
+    opacity: 0.5,
+  },
+  generatingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  generatingText: {
+    color: Theme.colors.surface,
+    fontSize: Theme.typography.fontSizes.sm,
+    fontWeight: Theme.typography.fontWeights.semibold as any,
+    marginTop: Theme.spacing.xs,
   },
   failedOverlay: {
     position: 'absolute',

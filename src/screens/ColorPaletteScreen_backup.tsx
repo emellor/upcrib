@@ -110,7 +110,7 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -128,6 +128,7 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
           <Text style={styles.skipButton}>Skip</Text>
         </TouchableOpacity>
       </View>
+
 
       {/* Progress Bar */}
       <View style={styles.progressContainer}>

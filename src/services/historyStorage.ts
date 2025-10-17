@@ -7,7 +7,7 @@ export interface DesignHistoryItem {
   createdAt: string;
   thumbnail: string; // URL for the generated image
   originalImage?: string; // URL for the original image
-  status: 'completed' | 'failed';
+  status: 'generating' | 'completed' | 'failed';
   title?: string; // User-defined or generated title
   localThumbnailPath?: string; // Local file path for thumbnail
   localOriginalPath?: string; // Local file path for original image

@@ -22,7 +22,7 @@ export type RootStackParamList = {
   EnvironmentThemes: { sessionId: string; selectedColors: number[]; imageUri?: string };
   InspirationPhoto: { sessionId: string; selectedColors: number[]; selectedThemes: number[]; imageUri?: string };
   DesignStyle: { sessionId: string; selectedColors: number[]; selectedThemes: number[]; hasInspirationPhoto: boolean; imageUri?: string };
-  ExteriorOptions: { sessionId: string };
+  ExteriorOptions: { sessionId: string; imageUri?: string };
   Style: { sessionId: string; imageUrl?: string };
   Design: { sessionId: string; answers?: { [questionId: string]: string }; imageUrl?: string };
   Result: { sessionId: string; imageUrl?: string; answers?: { [questionId: string]: string }; originalImageUrl?: string; results?: any[] };

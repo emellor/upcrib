@@ -15,6 +15,7 @@ import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { enhancedStyleRenovationApi, ColorPalette } from '../services/enhancedStyleRenovationApi';
 import Theme from '../constants/theme';
+import GlobalStyles from '../constants/globalStyles';
 
 type ColorPaletteScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -166,47 +167,49 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={GlobalStyles.screenContainer}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={GlobalStyles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={GlobalStyles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={GlobalStyles.backIcon}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.stepIndicator}>Step 1 of 3</Text>
-          <Text style={styles.title}>Exterior Colors</Text>
+        <View style={GlobalStyles.headerContent}>
+          <Text style={GlobalStyles.stepIndicator}>Step 1 of 3</Text>
+          <Text style={GlobalStyles.headerTitle}>Exterior Colors</Text>
         </View>
         <TouchableOpacity onPress={handleSkip}>
-          <Text style={styles.skipButton}>Skip</Text>
+          <Text style={GlobalStyles.skipButton}>Skip</Text>
         </TouchableOpacity>
       </View>
 
       {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '33%' }]} />
+      <View style={GlobalStyles.progressContainer}>
+        <View style={GlobalStyles.progressBar}>
+          <View style={[GlobalStyles.progressFill, { width: '33%' }]} />
         </View>
       </View>
 
       {/* Content */}
       <ScrollView 
-        style={styles.content}
+        style={GlobalStyles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.subtitle}>
-          Choose a color palette that best represents your exterior design vision
-        </Text>
+        <View style={GlobalStyles.content}>
+          <Text style={GlobalStyles.subtitle}>
+            Choose a color palette that best represents your exterior design vision
+          </Text>
+        </View>
         
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3B82F6" />
-            <Text style={styles.loadingText}>Loading color palettes...</Text>
+          <View style={GlobalStyles.loadingContainer}>
+            <ActivityIndicator size="large" color={Theme.colors.primary} />
+            <Text style={GlobalStyles.loadingText}>Loading color palettes...</Text>
           </View>
         ) : (
           <View style={styles.paletteGrid}>
@@ -251,11 +254,11 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
         )}
 
         {selectedPaletteId && (
-          <View style={styles.selectionSummary}>
-            <Text style={styles.selectionText}>
+          <View style={GlobalStyles.infoContainer}>
+            <Text style={GlobalStyles.infoTitle}>
               {colorPalettes.find(p => p.id === selectedPaletteId)?.name} selected
             </Text>
-            <Text style={styles.selectionDescription}>
+            <Text style={GlobalStyles.infoText}>
               {colorPalettes.find(p => p.id === selectedPaletteId)?.description}
             </Text>
           </View>
@@ -263,12 +266,12 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomContainer}>
+      <View style={GlobalStyles.bottomContainer}>
         <TouchableOpacity
-          style={[styles.nextButton, !selectedPaletteId && styles.nextButtonDisabled]}
+          style={[GlobalStyles.nextButton, !selectedPaletteId && GlobalStyles.nextButtonDisabled]}
           onPress={handleNext}
         >
-          <Text style={[styles.nextButtonText, !selectedPaletteId && styles.nextButtonTextDisabled]}>
+          <Text style={[GlobalStyles.nextButtonText, !selectedPaletteId && GlobalStyles.nextButtonTextDisabled]}>
             {selectedPaletteId ? 'Continue with Palette' : 'Skip for now'}
           </Text>
         </TouchableOpacity>
@@ -277,69 +280,10 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
   );
 };
 
+// Screen-specific styles only - common styles are in GlobalStyles
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Theme.colors.background,
-  },
-  header: {
-    ...Theme.header.default,
-    shadowColor: Theme.colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  backButton: {
-    ...Theme.header.backButton,
-  },
-  backIcon: {
-    fontSize: 20,
-    color: Theme.colors.text,
-  },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  stepIndicator: {
-    ...Theme.header.stepIndicator,
-  },
-  title: {
-    ...Theme.header.title,
-  },
-  skipButton: {
-    ...Theme.buttons.linkText,
-  },
-  progressContainer: {
-    paddingHorizontal: Theme.spacing.xl,
-    paddingVertical: Theme.spacing.base,
-    backgroundColor: Theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.border,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: Theme.colors.borderSecondary,
-    borderRadius: 2,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: Theme.colors.primary,
-    borderRadius: 2,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 32,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#64748B',
-    textAlign: 'center',
-    marginBottom: 40,
-    lineHeight: 24,
-    paddingHorizontal: 8,
-    fontWeight: '500',
+  scrollContent: {
+    paddingBottom: 20,
   },
   paletteGrid: {
     flexDirection: 'row',
@@ -410,62 +354,6 @@ const styles = StyleSheet.create({
   },
   selectedPaletteName: {
     color: '#B45309',
-  },
-  selectionSummary: {
-    marginTop: 40,
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    marginHorizontal: 20,
-  },
-  selectionText: {
-    fontSize: 16,
-    color: '#1E40AF',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  selectionDescription: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  bottomContainer: {
-    paddingHorizontal: Theme.spacing.xl,
-    paddingVertical: Theme.spacing.xl,
-    backgroundColor: Theme.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: Theme.colors.border,
-    ...Theme.shadows.sm,
-  },
-  nextButton: {
-    ...Theme.buttons.primary,
-  },
-  nextButtonDisabled: {
-    ...Theme.buttons.disabled,
-  },
-  nextButtonText: {
-    ...Theme.buttons.primaryText,
-  },
-  nextButtonTextDisabled: {
-    ...Theme.buttons.disabledText,
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#64748B',
-    textAlign: 'center',
   },
 });
 

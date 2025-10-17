@@ -56,3 +56,7 @@ export const FontSizes = {
   xxl: 32,
   xxxl: 48,
 };
+
+// Export global styles and theme
+export { default as GlobalStyles } from './globalStyles';
+export { default as Theme } from './theme';

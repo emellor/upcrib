@@ -282,6 +282,8 @@ const styles = StyleSheet.create({
   },
   header: {
     ...Theme.header.default,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButton: {
     ...Theme.header.backButton,
@@ -293,12 +295,20 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 60,
   },
   stepIndicator: {
-    ...Theme.header.stepIndicator,
+    fontSize: 14,
+    color: Theme.colors.textSecondary,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   title: {
-    ...Theme.header.title,
+    fontSize: 20,
+    fontWeight: '700' as any,
+    color: Theme.colors.text,
+    textAlign: 'center',
   },
   progressContainer: {
     paddingHorizontal: Theme.spacing.xl,
