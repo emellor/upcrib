@@ -21,6 +21,7 @@ import GlobalStyles from '../constants/globalStyles';
 import BottomNavigation from '../components/BottomNavigation';
 import { useHistory } from '../hooks/useHistory';
 import { DesignHistoryItem, HistoryStorageService } from '../services/historyStorage';
+import ResultScreen from './ResultScreen';
 
 type HistoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'History'>;
 
@@ -39,6 +40,12 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [resultModalData, setResultModalData] = useState<{
+    sessionId: string;
+    imageUrl?: string;
+    originalImageUrl?: string;
+  } | null>(null);
 
   // Auto-refresh when there are generating designs
   useEffect(() => {
@@ -58,21 +65,23 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
   };
 
   const handleItemPress = (item: DesignHistoryItem) => {
-    // Use local paths if available, otherwise use original URLs
-    const imageUrl = item.localThumbnailPath 
-      ? `file://${item.localThumbnailPath}`
-      : item.thumbnail;
+    // Always use the HTTP URLs (thumbnail and originalImage) for displaying in ResultScreen
+    // The file:// paths are only for local thumbnails in the grid view
     
-    const originalImageUrl = item.localOriginalPath
-      ? `file://${item.localOriginalPath}`
-      : item.originalImage;
-
-    // Navigate to Result screen with the design data
-    navigation.navigate('Result', {
+    // Open Result screen as modal
+    setResultModalData({
       sessionId: item.sessionId,
-      imageUrl: imageUrl,
-      originalImageUrl: originalImageUrl,
+      imageUrl: item.thumbnail,  // HTTP URL for the generated image
+      originalImageUrl: item.originalImage,  // HTTP URL for the original image
     });
+    setShowResultModal(true);
+  };
+
+  const handleCloseResultModal = () => {
+    setShowResultModal(false);
+    setResultModalData(null);
+    // Refresh history to catch any updates
+    refreshHistory(true);
   };
 
   const handleItemLongPress = (item: DesignHistoryItem) => {
@@ -223,7 +232,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
         <View style={GlobalStyles.headerContent}>
           <Text style={GlobalStyles.headerTitle}>History</Text>
         </View>
-        <TouchableOpacity 
+{/*         <TouchableOpacity 
           onPress={handleClearHistory} 
           style={styles.clearButton}
           disabled={history.length === 0}
@@ -231,7 +240,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
           <Text style={[styles.clearButtonText, history.length === 0 && styles.clearButtonDisabled]}>
             Clear
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {/* Content */}
@@ -358,6 +367,26 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Result Modal */}
+      <Modal
+        visible={showResultModal}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={handleCloseResultModal}
+      >
+        {resultModalData && (
+          <ResultScreen
+            navigation={navigation as any}
+            route={{
+              params: resultModalData,
+              key: 'Result',
+              name: 'Result' as const,
+            } as any}
+            onClose={handleCloseResultModal}
+          />
+        )}
       </Modal>
     </SafeAreaView>
   );

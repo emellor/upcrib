@@ -33,12 +33,13 @@ type ResultScreenRouteProp = RouteProp<RootStackParamList, 'Result'>;
 interface Props {
   navigation: ResultScreenNavigationProp;
   route: ResultScreenRouteProp;
+  onClose?: () => void; // Optional close handler for modal mode
 }
 
 const { width } = Dimensions.get('window');
 const imageSize = width - 40; // Full width minus padding
 
-const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
+const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
   const { sessionId, imageUrl: propImageUrl, answers: routeAnswers, originalImageUrl } = route.params;
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -298,15 +299,18 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
     };
   }, [sessionData?.hasPendingJobs, sessionId, questions]);
 
-  // Prevent hardware back button on Android
+  // Handle hardware back button on Android
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      // Return true to prevent default back behavior
-      return true;
+      if (onClose) {
+        onClose();
+        return true; // Prevent default back behavior
+      }
+      return false; // Allow default behavior when not in modal mode
     });
 
     return () => backHandler.remove();
-  }, []);
+  }, [onClose]);
 
   // Debug effect to log image URLs
   useEffect(() => {
@@ -419,8 +423,19 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleStartNew = () => {
-    // Navigate back to Home screen to start a new session
-    navigation.navigate('Home');
+    if (onClose) {
+      // In modal mode, close the modal and return to history
+      onClose();
+    } else {
+      // Legacy: Navigate back to Home screen to start a new session
+      navigation.navigate('Home');
+    }
+  };
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    }
   };
 
   const toggleQuestions = () => {
@@ -653,6 +668,15 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       ) : (
         <>
+          {/* Close Button Header (only in modal mode) */}
+          {onClose && (
+            <View style={styles.closeHeader}>
+              <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Main Content */}
           <ScrollView 
             style={styles.scrollView} 
@@ -800,13 +824,15 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
             <View style={styles.bottomSpacing} />
           </ScrollView>
 
-          {/* Floating New Design Button */}
-          <View style={styles.floatingButton}>
-            <TouchableOpacity style={styles.newDesignButton} onPress={handleStartNew}>
-              <Text style={styles.newDesignIcon}>✨</Text>
-              <Text style={styles.newDesignText}>Create New Design</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Floating New Design Button - Hidden in modal mode */}
+          {!onClose && (
+            <View style={styles.floatingButton}>
+              <TouchableOpacity style={styles.newDesignButton} onPress={handleStartNew}>
+                <Text style={styles.newDesignIcon}>✨</Text>
+                <Text style={styles.newDesignText}>Create New Design</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Share Modal */}
           <Modal
@@ -1074,6 +1100,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Theme.colors.background,
   },
+  closeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 10,
+    backgroundColor: Theme.colors.background,
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    lineHeight: 20,
+  },
   scrollView: {
     flex: 1,
   },
@@ -1139,160 +1193,104 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Modern Hero Section
+  // Elegant Hero Section
   modernHeroSection: {
-    paddingTop: 5,
-    paddingBottom: 5,
-    paddingHorizontal: 20,
-    position: 'relative',
+    paddingTop: 24,
+    paddingBottom: 16,
+    paddingHorizontal: 24,
+    backgroundColor: Theme.colors.background,
   },
   modernHeroContent: {
     alignItems: 'center',
-    paddingVertical: 20,
   },
   heroIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    borderWidth: 2,
-    borderColor: 'rgba(0, 122, 255, 0.3)',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Theme.colors.accentLight,
+    borderWidth: 1,
+    borderColor: Theme.colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    marginBottom: 12,
   },
   heroIcon: {
     fontSize: 24,
-    textShadowColor: 'rgba(0, 122, 255, 0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
   },
   modernHeroTitle: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: Theme.typography.fontSizes['2xl'],
+    fontWeight: Theme.typography.fontWeights.bold as any,
     color: Theme.colors.text,
     textAlign: 'center',
-    marginBottom: 8,
-    letterSpacing: -0.5,
+    marginBottom: 6,
+    letterSpacing: -0.3,
   },
   modernHeroSubtitle: {
-    fontSize: 16,
+    fontSize: Theme.typography.fontSizes.base,
     color: Theme.colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 0,
-    fontWeight: '500',
-    // lineHeight: 2,
+    fontWeight: Theme.typography.fontWeights.normal as any,
+    lineHeight: Theme.typography.lineHeights.relaxed,
   },
   modernHeroBadge: {
-    backgroundColor: 'rgba(0, 122, 255, 0.15)',
+    backgroundColor: Theme.colors.accentLight,
     borderWidth: 1,
-    borderColor: 'rgba(0, 122, 255, 0.4)',
+    borderColor: Theme.colors.primaryLight,
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    marginTop: 8,
   },
   badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#007AFF',
+    fontSize: Theme.typography.fontSizes.xs,
+    fontWeight: Theme.typography.fontWeights.semibold as any,
+    color: Theme.colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
 
-  // Legacy hero styles (keeping for compatibility)
-  heroSection: {
-    paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-  },
-  heroContent: {
-    alignItems: 'center',
-  },
-  heroTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  heroSubtitle: {
-    fontSize: 16,
-    color: '#999',
-    textAlign: 'center',
-  },
+  // Legacy hero styles (removed - using modernHeroSection above)
 
-  // Image Card - Enhanced Modern Design
+  // Elegant Image Card Design
   imageCard: {
-    backgroundColor: '#2a2a2a',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 12,
+    ...Theme.cards.elevated,
+    marginHorizontal: Theme.spacing.lg,
+    marginBottom: Theme.spacing.lg,
+    padding: Theme.spacing.xl,
   },
   beforeAfterContainer: {
     alignItems: 'center',
   },
   comparisonLabel: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: Theme.typography.fontSizes.lg,
+    fontWeight: Theme.typography.fontWeights.bold as any,
+    color: Theme.colors.text,
     marginBottom: 8,
     textAlign: 'center',
     letterSpacing: -0.3,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   sliderInstructions: {
-    fontSize: 13,
-    color: '#B0B0B0',
-    marginBottom: 20,
+    fontSize: Theme.typography.fontSizes.sm,
+    color: Theme.colors.textSecondary,
+    marginBottom: Theme.spacing.lg,
     textAlign: 'center',
-    fontWeight: '500',
-    opacity: 0.8,
+    fontWeight: Theme.typography.fontWeights.medium as any,
   },
   sliderWrapper: {
-    // Wrapper to isolate gesture handling
     alignSelf: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 15,
-    borderRadius: 20,
+    ...Theme.shadows.md,
+    borderRadius: Theme.borderRadius.lg,
+    overflow: 'hidden',
   },
   sliderContainer: {
     position: 'relative',
-    width: Dimensions.get('window').width - 40,
-    height: Dimensions.get('window').width - 40,
-    borderRadius: 20,
+    width: Dimensions.get('window').width - 88,
+    height: Dimensions.get('window').width - 88,
+    borderRadius: Theme.borderRadius.lg,
     overflow: 'hidden',
-    backgroundColor: '#3a3a3a',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    // Inner shadow effect
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    backgroundColor: Theme.colors.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
   },
   sliderImageContainer: {
     position: 'absolute',
@@ -1304,26 +1302,26 @@ const styles = StyleSheet.create({
   sliderImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 18, // Slightly smaller than container for border effect
+    borderRadius: Theme.borderRadius.lg,
   },
   sliderPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: Theme.colors.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 18,
+    borderRadius: Theme.borderRadius.lg,
   },
   placeholderText: {
-    color: '#666',
-    fontSize: 16,
+    color: Theme.colors.textSecondary,
+    fontSize: Theme.typography.fontSizes.base,
     textAlign: 'center',
     paddingHorizontal: 20,
     marginBottom: 8,
   },
   placeholderSubtext: {
-    color: '#999',
-    fontSize: 14,
+    color: Theme.colors.textTertiary,
+    fontSize: Theme.typography.fontSizes.sm,
     textAlign: 'center',
     paddingHorizontal: 20,
   },
@@ -1333,10 +1331,9 @@ const styles = StyleSheet.create({
     left: 0,
     bottom: 0,
     overflow: 'hidden',
-    borderRadius: 18,
-    // Add subtle gradient overlay at the division line
-    borderRightWidth: 1,
-    borderRightColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: Theme.borderRadius.lg,
+    borderRightWidth: 2,
+    borderRightColor: Theme.colors.primary,
   },
   sliderHandle: {
     position: 'absolute',
@@ -1346,359 +1343,295 @@ const styles = StyleSheet.create({
     marginLeft: -22,
     marginTop: -22,
     zIndex: 10,
-    // Outer glow effect
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 15,
   },
   sliderHandleInner: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Theme.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
+    ...Theme.shadows.xl,
     borderWidth: 3,
-    borderColor: '#007AFF',
+    borderColor: Theme.colors.primary,
   },
   sliderHandleIcon: {
     fontSize: 18,
-    color: '#007AFF',
+    color: Theme.colors.primary,
     fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 122, 255, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   imageLabel: {
     position: 'absolute',
-    top: 16,
-    left: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(212, 165, 116, 0.95)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    borderRadius: Theme.borderRadius.sm,
+    ...Theme.shadows.sm,
   },
   imageLabelText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
+    color: Theme.colors.textInverse,
+    fontSize: Theme.typography.fontSizes.xs,
+    fontWeight: Theme.typography.fontWeights.bold as any,
     letterSpacing: 0.5,
   },
   imageTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 16,
+    fontSize: Theme.typography.fontSizes.base,
+    fontWeight: Theme.typography.fontWeights.semibold as any,
+    color: Theme.colors.text,
+    marginBottom: Theme.spacing.base,
     textAlign: 'center',
   },
   singleImageContainer: {
     alignItems: 'center',
   },
   mainImage: {
-    width: Dimensions.get('window').width - 80,
-    height: Dimensions.get('window').width - 80,
-    borderRadius: 16,
-    backgroundColor: '#3a3a3a',
+    width: Dimensions.get('window').width - 88,
+    height: Dimensions.get('window').width - 88,
+    borderRadius: Theme.borderRadius.lg,
+    backgroundColor: Theme.colors.backgroundSecondary,
   },
   placeholderImage: {
-    width: (Dimensions.get('window').width - 72) / 2,
-    height: (Dimensions.get('window').width - 72) / 2,
-    borderRadius: 12,
-    backgroundColor: '#3a3a3a',
+    width: (Dimensions.get('window').width - 88) / 2,
+    height: (Dimensions.get('window').width - 88) / 2,
+    borderRadius: Theme.borderRadius.md,
+    backgroundColor: Theme.colors.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#4a4a4a',
+    borderColor: Theme.colors.border,
     borderStyle: 'dashed',
   },
 
-  // Actions Bar - Enhanced Modern Design
+  // Elegant Actions Bar
   actionsBar: {
-    backgroundColor: '#2a2a2a',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 22,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
+    ...Theme.cards.default,
+    marginHorizontal: Theme.spacing.lg,
+    marginBottom: Theme.spacing.lg,
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing.base,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   actionButton: {
-    alignItems: 'center',
-    backgroundColor: Theme.colors.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    borderRadius: 14,
+    ...Theme.buttons.primary,
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.md,
     flex: 1,
-    marginHorizontal: 4,
+    marginHorizontal: 6,
     justifyContent: 'center',
-    height: 44,
-    ...Theme.shadows.md,
+    minHeight: 48,
   },
   actionButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Theme.colors.textInverse,
+    ...Theme.buttons.primaryText,
+    fontSize: Theme.typography.fontSizes.sm,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
-    letterSpacing: 0.3,
   },
 
-  // Floating Button - Premium Design
+  // Elegant Floating Button
   floatingButton: {
     position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-    elevation: 15,
+    bottom: Theme.spacing.lg,
+    left: Theme.spacing.lg,
+    right: Theme.spacing.lg,
   },
   newDesignButton: {
-    backgroundColor: '#007AFF',
+    ...Theme.buttons.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-    // Premium gradient effect
-    borderTopColor: 'rgba(255, 255, 255, 0.3)',
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    paddingVertical: Theme.spacing.base,
+    paddingHorizontal: Theme.spacing.xl,
   },
   newDesignIcon: {
-    fontSize: 16,
-    marginRight: 8,
-    textShadowColor: 'rgba(255, 255, 255, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
+    fontSize: Theme.typography.fontSizes.base,
+    marginRight: Theme.spacing.sm,
   },
   newDesignText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-    letterSpacing: 0.3,
+    ...Theme.buttons.primaryText,
+    fontSize: Theme.typography.fontSizes.base,
   },
 
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: Theme.spacing.lg,
   },
 
   // Share Modal
   shareModal: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 20,
-    padding: 24,
+    ...Theme.cards.elevated,
+    padding: Theme.spacing.xl,
     width: '100%',
     maxWidth: 320,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontSize: Theme.typography.fontSizes.xl,
+    fontWeight: Theme.typography.fontWeights.bold as any,
+    color: Theme.colors.text,
     textAlign: 'center',
-    marginBottom:1,
+    marginBottom: 4,
   },
   modalSubtitle: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: Theme.typography.fontSizes.sm,
+    color: Theme.colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: Theme.spacing.xl,
   },
   shareOptions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 24,
+    marginBottom: Theme.spacing.xl,
   },
   shareOption: {
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: '#3a3a3a',
+    paddingVertical: Theme.spacing.base,
+    paddingHorizontal: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.md,
+    backgroundColor: Theme.colors.backgroundSecondary,
     minWidth: 80,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
   },
   shareIcon: {
     fontSize: 24,
-    marginBottom: 8,
+    marginBottom: Theme.spacing.sm,
   },
   shareOptionText: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: '600',
+    fontSize: Theme.typography.fontSizes.xs,
+    color: Theme.colors.text,
+    fontWeight: Theme.typography.fontWeights.semibold as any,
   },
   modalCloseButton: {
-    backgroundColor: '#4a4a4a',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
+    ...Theme.buttons.secondary,
+    paddingVertical: Theme.spacing.md,
   },
   modalCloseText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    ...Theme.buttons.secondaryText,
   },
 
   // Edit Modal
   editModal: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 20,
+    ...Theme.cards.elevated,
     width: '100%',
-    maxHeight: '90%', // Increased from 85%
-    marginTop: '10%', // Reduced from 15%
+    maxHeight: '90%',
+    marginTop: '10%',
     flex: 1,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 10,
+    padding: Theme.spacing.base,
     borderBottomWidth: 1,
-    borderBottomColor: '#3a3a3a',
+    borderBottomColor: Theme.colors.border,
   },
   modalCloseIcon: {
-    fontSize: 18,
-    color: '#999',
+    fontSize: Theme.typography.fontSizes.lg,
+    color: Theme.colors.textSecondary,
     fontWeight: 'bold',
   },
   
   // Edit Modal Reference Images
   editImageReference: {
-    backgroundColor: '#1a1a1a',
-    paddingHorizontal: 20,
-    paddingVertical: 12, // Reduced from 16
+    backgroundColor: Theme.colors.backgroundSecondary,
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#3a3a3a',
+    borderBottomColor: Theme.colors.border,
   },
   editReferenceTitle: {
-    fontSize: 12, // Reduced from 14
-    fontWeight: '600',
-    color: '#999',
-    marginBottom: 8, // Reduced from 12
+    fontSize: Theme.typography.fontSizes.xs,
+    fontWeight: Theme.typography.fontWeights.semibold as any,
+    color: Theme.colors.textSecondary,
+    marginBottom: Theme.spacing.sm,
     textAlign: 'center',
   },
   editImageRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    gap: 12,
+    gap: Theme.spacing.md,
   },
   editImageColumn: {
     flex: 1,
     alignItems: 'center',
   },
   editImageLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#999',
+    fontSize: Theme.typography.fontSizes.xs,
+    fontWeight: Theme.typography.fontWeights.semibold as any,
+    color: Theme.colors.textSecondary,
     marginBottom: 6,
     textAlign: 'center',
   },
   editReferenceImage: {
-    width: (Dimensions.get('window').width - 84) / 2, // Responsive width
-    height: 60, // Reduced from 80
-    borderRadius: 8,
-    backgroundColor: '#3a3a3a',
+    width: (Dimensions.get('window').width - 84) / 2,
+    height: 60,
+    borderRadius: Theme.borderRadius.sm,
+    backgroundColor: Theme.colors.backgroundSecondary,
   },
   editPlaceholderImage: {
     width: (Dimensions.get('window').width - 84) / 2,
-    height: 60, // Reduced from 80
-    borderRadius: 8,
-    backgroundColor: '#3a3a3a',
+    height: 60,
+    borderRadius: Theme.borderRadius.sm,
+    backgroundColor: Theme.colors.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#4a4a4a',
+    borderColor: Theme.colors.border,
     borderStyle: 'dashed',
   },
   editPlaceholderText: {
     fontSize: 10,
-    color: '#666',
+    color: Theme.colors.textSecondary,
     textAlign: 'center',
   },
   
   // Question Navigation Container
   editQuestionContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    minHeight: 200, // Ensure minimum space for questions
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing.base,
+    minHeight: 200,
   },
   questionNavigation: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 8,
+    marginBottom: Theme.spacing.lg,
+    paddingHorizontal: Theme.spacing.sm,
   },
   navArrow: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#007AFF',
+    ...Theme.buttons.primary,
+    paddingVertical: Theme.spacing.sm,
+    paddingHorizontal: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.sm,
     minWidth: 80,
     alignItems: 'center',
   },
   navArrowDisabled: {
-    backgroundColor: '#4a4a4a',
+    ...Theme.buttons.disabled,
     opacity: 0.5,
   },
   navArrowText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    ...Theme.buttons.primaryText,
+    fontSize: Theme.typography.fontSizes.sm,
   },
   navArrowTextDisabled: {
-    color: '#999',
+    ...Theme.buttons.disabledText,
   },
   questionCounter: {
-    backgroundColor: '#3a3a3a',
+    backgroundColor: Theme.colors.backgroundSecondary,
     paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingHorizontal: Theme.spacing.base,
+    borderRadius: Theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
   },
   questionInfo: {
     alignItems: 'center',
@@ -1706,168 +1639,154 @@ const styles = StyleSheet.create({
   progressDots: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: Theme.spacing.sm,
     gap: 6,
   },
   progressDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#4a4a4a',
+    backgroundColor: Theme.colors.border,
   },
   progressDotActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: Theme.colors.primary,
     transform: [{ scale: 1.2 }],
   },
   progressDotAnswered: {
-    backgroundColor: '#34C759',
+    backgroundColor: Theme.colors.success,
   },
   questionCounterText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: Theme.typography.fontSizes.xs,
+    fontWeight: Theme.typography.fontWeights.semibold as any,
+    color: Theme.colors.text,
   },
   currentQuestionCard: {
-    backgroundColor: '#3a3a3a',
-    borderRadius: 12,
-    padding: 20,
+    ...Theme.cards.default,
+    padding: Theme.spacing.lg,
     flex: 1,
-    minHeight: 150, // Ensure space for content
-    // Removed maxHeight to allow full expansion
+    minHeight: 150,
   },
   currentQuestionText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 20,
-    lineHeight: 24,
+    fontSize: Theme.typography.fontSizes.lg,
+    fontWeight: Theme.typography.fontWeights.semibold as any,
+    color: Theme.colors.text,
+    marginBottom: Theme.spacing.lg,
+    lineHeight: Theme.typography.lineHeights.relaxed,
   },
   
   editContent: {
-    padding: 20,
-    // Removed maxHeight to allow full expansion to available space
+    padding: Theme.spacing.lg,
   },
   editQuestionCard: {
-    backgroundColor: '#3a3a3a',
-    borderRadius: 12,
-    padding: 12, // Reduced from 16
-    marginBottom: 12, // Reduced from 16
+    ...Theme.cards.default,
+    padding: Theme.spacing.md,
+    marginBottom: Theme.spacing.md,
   },
   editQuestionText: {
-    fontSize: 14, // Reduced from 16
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 8, // Reduced from 12
+    fontSize: Theme.typography.fontSizes.sm,
+    fontWeight: Theme.typography.fontWeights.semibold as any,
+    color: Theme.colors.text,
+    marginBottom: Theme.spacing.sm,
   },
   editOptionsContainer: {
-    gap: 6, // Reduced from 8
+    gap: 6,
   },
   editOptionButton: {
-    backgroundColor: '#4a4a4a',
-    paddingVertical: 10, // Reduced from 12
-    paddingHorizontal: 14, // Reduced from 16
-    borderRadius: 8,
+    backgroundColor: Theme.colors.backgroundSecondary,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: Theme.borderRadius.sm,
     borderWidth: 1,
-    borderColor: '#5a5a5a',
+    borderColor: Theme.colors.border,
   },
   editOptionSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: Theme.colors.primary,
+    borderColor: Theme.colors.primary,
   },
   editOptionText: {
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: Theme.typography.fontSizes.sm,
+    color: Theme.colors.text,
   },
   editOptionTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+    color: Theme.colors.textInverse,
+    fontWeight: Theme.typography.fontWeights.semibold as any,
   },
   editTextInput: {
-    backgroundColor: '#4a4a4a',
+    backgroundColor: Theme.colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: '#5a5a5a',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    fontSize: 14,
-    color: '#FFFFFF',
+    borderColor: Theme.colors.border,
+    borderRadius: Theme.borderRadius.sm,
+    paddingVertical: Theme.spacing.md,
+    paddingHorizontal: Theme.spacing.base,
+    fontSize: Theme.typography.fontSizes.sm,
+    color: Theme.colors.text,
     minHeight: 80,
-    maxHeight: 120, // Prevent overflow
+    maxHeight: 120,
     textAlignVertical: 'top',
   },
   editActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 20,
+    padding: Theme.spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: '#3a3a3a',
-    gap: 12,
+    borderTopColor: Theme.colors.border,
+    gap: Theme.spacing.md,
   },
   editCancelButton: {
+    ...Theme.buttons.secondary,
     flex: 1,
-    backgroundColor: '#4a4a4a',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
+    paddingVertical: Theme.spacing.md,
   },
   editCancelText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    ...Theme.buttons.secondaryText,
   },
   editSaveButton: {
+    ...Theme.buttons.primary,
     flex: 2,
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
+    paddingVertical: Theme.spacing.md,
   },
   editSaveDisabled: {
-    backgroundColor: '#666',
+    ...Theme.buttons.disabled,
   },
   editSaveText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    ...Theme.buttons.primaryText,
   },
   noQuestionsCard: {
-    backgroundColor: '#3a3a3a',
-    borderRadius: 12,
-    padding: 20,
+    ...Theme.cards.default,
+    padding: Theme.spacing.lg,
     alignItems: 'center',
   },
   noQuestionsText: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: Theme.typography.fontSizes.sm,
+    color: Theme.colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: Theme.typography.lineHeights.normal,
   },
 
   // Info Modal
   infoModal: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 20,
-    padding: 24,
+    ...Theme.cards.elevated,
+    padding: Theme.spacing.xl,
     width: '100%',
     maxWidth: 320,
   },
   infoContent: {
-    marginBottom: 24,
+    marginBottom: Theme.spacing.xl,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: Theme.spacing.sm,
   },
   infoLabel: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: Theme.typography.fontSizes.sm,
+    color: Theme.colors.textSecondary,
   },
   infoValue: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '600',
+    fontSize: Theme.typography.fontSizes.sm,
+    color: Theme.colors.text,
+    fontWeight: Theme.typography.fontWeights.semibold as any,
   },
 
   // Spacing
