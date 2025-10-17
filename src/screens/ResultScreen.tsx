@@ -24,6 +24,8 @@ import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { apiClient } from '../services/apiClient';
 import { SessionData } from '../types/api';
+import Theme from '../constants/theme';
+import { HistoryStorageService, DesignHistoryItem } from '../services/historyStorage';
 
 type ResultScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Result'>;
 type ResultScreenRouteProp = RouteProp<RootStackParamList, 'Result'>;
@@ -81,6 +83,7 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
       url: string;
     };
   } | null>(null);
+  const [designSavedToHistory, setDesignSavedToHistory] = useState(false);
 
   // Pan responder for the before/after slider
   const panResponder = PanResponder.create({
@@ -133,6 +136,90 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     loadSessionData();
   }, []);
+
+  // Save design to history when it's completed
+  // NOTE: We rely on the enhanced style renovation status for saving to ensure we have correct URLs
+  // This useEffect is kept as a fallback but should generally not be used
+  useEffect(() => {
+    const saveToHistoryIfCompleted = async () => {
+      // Only save if we don't have enhanced status (fallback case)
+      // Enhanced status has more accurate URLs
+      if (
+        sessionData &&
+        !sessionData.hasPendingJobs &&
+        sessionData.status === 'completed' &&
+        !designSavedToHistory &&
+        !enhancedStyleRenovationStatus && // Only use this fallback if no enhanced status
+        getImageUrl()
+      ) {
+        const originalUrl = getOriginalImageUrl();
+        
+        // Skip save if we don't have a valid original image URL
+        if (!originalUrl) {
+          console.log('Skipping history save - no valid original image URL');
+          return;
+        }
+        
+        try {
+          const historyItem: DesignHistoryItem = {
+            id: `${sessionId}-${Date.now()}`,
+            sessionId: sessionId,
+            createdAt: new Date().toISOString(),
+            thumbnail: getImageUrl()!,
+            originalImage: originalUrl,
+            status: 'completed',
+            title: `Design ${sessionId.slice(-6)}`,
+          };
+
+          await HistoryStorageService.saveDesignToHistory(historyItem);
+          setDesignSavedToHistory(true);
+          console.log('Design saved to history (fallback):', historyItem);
+        } catch (error) {
+          console.error('Failed to save design to history:', error);
+        }
+      }
+    };
+
+    saveToHistoryIfCompleted();
+  }, [sessionData, sessionId, designSavedToHistory, enhancedStyleRenovationStatus]);
+
+  // Also save when enhanced style renovation status indicates completion
+  useEffect(() => {
+    const saveToHistoryFromEnhanced = async () => {
+      if (
+        enhancedStyleRenovationStatus &&
+        !enhancedStyleRenovationStatus.hasPendingJobs &&
+        enhancedStyleRenovationStatus.status === 'completed' &&
+        !designSavedToHistory &&
+        enhancedStyleRenovationStatus.generatedImage?.url
+      ) {
+        try {
+          const generatedImageUrl = `${apiClient.apiBaseURL}${enhancedStyleRenovationStatus.generatedImage.url}`;
+          const originalImageUrl = enhancedStyleRenovationStatus.originalImage?.url 
+            ? `${apiClient.apiBaseURL}${enhancedStyleRenovationStatus.originalImage.url}`
+            : undefined;
+
+          const historyItem: DesignHistoryItem = {
+            id: `${sessionId}-${Date.now()}`,
+            sessionId: sessionId,
+            createdAt: new Date().toISOString(),
+            thumbnail: generatedImageUrl,
+            originalImage: originalImageUrl,
+            status: 'completed',
+            title: `Design ${sessionId.slice(-6)}`,
+          };
+
+          await HistoryStorageService.saveDesignToHistory(historyItem);
+          setDesignSavedToHistory(true);
+          console.log('Design saved to history from enhanced status:', historyItem);
+        } catch (error) {
+          console.error('Failed to save design to history from enhanced status:', error);
+        }
+      }
+    };
+
+    saveToHistoryFromEnhanced();
+  }, [enhancedStyleRenovationStatus, sessionId, designSavedToHistory]);
 
   // Add polling for pending jobs using enhanced style renovation API
   useEffect(() => {
@@ -492,12 +579,8 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
       return originalImageUrl;
     }
     
-    // 5. Fallback to constructing URL from image filename if imageUrl is not available
-    if (sessionData?.image?.filename) {
-      const url = `${apiClient.apiBaseURL}/uploads/${sessionData.image.filename}`;
-      console.log('Fallback original image URL from filename:', url);
-      return url;
-    }
+    // Don't use sessionData.image.filename as fallback - it's often just the original name
+    // and doesn't match the actual uploaded file path on the server
     
     console.log('❌ No original image URL available - all methods failed');
     return null;
@@ -550,11 +633,11 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
+      <StatusBar barStyle="dark-content" backgroundColor={Theme.colors.surface} />
       
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={Theme.colors.primary} />
           <Text style={styles.loadingText}>Loading your results...</Text>
         </View>
       ) : error ? (
@@ -989,7 +1072,7 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Theme.colors.background,
   },
   scrollView: {
     flex: 1,
@@ -998,17 +1081,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Theme.colors.background,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: Theme.colors.textSecondary,
   },
   loadingSubtext: {
     marginTop: 8,
     fontSize: 14,
-    color: '#888',
+    color: Theme.colors.textTertiary,
     textAlign: 'center',
     paddingHorizontal: 40,
     lineHeight: 20,
@@ -1018,40 +1101,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Theme.colors.background,
   },
   errorTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: Theme.colors.text,
     marginBottom: 8,
   },
   errorText: {
     fontSize: 16,
-    color: '#999',
+    color: Theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
   },
   retryButton: {
-    backgroundColor: '#007AFF',
+    ...Theme.buttons.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
     marginBottom: 12,
   },
   retryButtonText: {
-    color: '#FFFFFF',
+    ...Theme.buttons.primaryText,
     fontSize: 16,
     fontWeight: '600',
   },
   homeButton: {
-    backgroundColor: '#2a2a2a',
+    ...Theme.buttons.secondary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
   },
   homeButtonText: {
-    color: '#007AFF',
+    ...Theme.buttons.secondaryText,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1092,17 +1175,14 @@ const styles = StyleSheet.create({
   modernHeroTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Theme.colors.text,
     textAlign: 'center',
     marginBottom: 8,
     letterSpacing: -0.5,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   modernHeroSubtitle: {
     fontSize: 16,
-    color: '#B0B0B0',
+    color: Theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: 0,
     fontWeight: '500',
@@ -1328,14 +1408,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
   },
-  sliderPlaceholder: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 16,
-    backgroundColor: '#3a3a3a',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   singleImageContainer: {
     alignItems: 'center',
   },
@@ -1355,11 +1427,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#4a4a4a',
     borderStyle: 'dashed',
-  },
-  placeholderText: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
   },
 
   // Actions Bar - Enhanced Modern Design
@@ -1383,7 +1450,7 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     alignItems: 'center',
-    backgroundColor: '#007AFF',
+    backgroundColor: Theme.colors.primary,
     paddingHorizontal: 8,
     paddingVertical: 12,
     borderRadius: 14,
@@ -1391,20 +1458,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
     justifyContent: 'center',
     height: 44,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: '#0066CC',
-    // Add subtle gradient effect
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    ...Theme.shadows.md,
   },
   actionButtonText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Theme.colors.textInverse,
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },

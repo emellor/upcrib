@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { launchImageLibrary, ImagePickerResponse, MediaType, PhotoQuality } from 'react-native-image-picker';
+import BottomNavigation from '../components/BottomNavigation';
 
 type MoodBoardNavigationProp = StackNavigationProp<any, 'MoodBoard'>;
 
@@ -197,6 +198,9 @@ const MoodBoardScreen: React.FC<MoodBoardProps> = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation activeTab="MoodBoard" />
     </SafeAreaView>
   );
 };

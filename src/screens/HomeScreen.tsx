@@ -13,6 +13,7 @@ import {
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useSession } from '../hooks/useSession';
+import BottomNavigation from '../components/BottomNavigation';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -130,9 +131,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.settingsButton}>
+{/*         <TouchableOpacity style={styles.settingsButton}>
           <Text style={styles.settingsIcon}>⚙️</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <Text style={styles.logo}>upCrib</Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -242,23 +243,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <View style={styles.navItem}>
-          <Text style={styles.navIcon}>🏠</Text>
-          <Text style={styles.navLabel}>Home</Text>
-        </View>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('MoodBoard')}
-        >
-          <Text style={styles.navIcon}>🔍</Text>
-          <Text style={styles.navLabel}>Mood Board</Text>
-        </TouchableOpacity>
-        <View style={styles.navItem}>
-          <Text style={styles.navIcon}>👤</Text>
-          <Text style={styles.navLabel}>History</Text>
-        </View>
-      </View>
+      <BottomNavigation activeTab="Home" />
     </SafeAreaView>
   );
 };
@@ -408,26 +393,6 @@ const styles = StyleSheet.create({
     color: '#c62828',
     fontSize: 14,
     textAlign: 'center',
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  navIcon: {
-    fontSize: 20,
-    marginBottom: 4,
-  },
-  navLabel: {
-    fontSize: 12,
-    color: '#666666',
   },
 });
 

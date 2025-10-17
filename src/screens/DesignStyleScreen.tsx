@@ -15,6 +15,7 @@ import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { enhancedStyleRenovationApi } from '../services/enhancedStyleRenovationApi';
 import { apiClient } from '../services/apiClient';
+import Theme from '../constants/theme';
 
 type DesignStyleScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -277,57 +278,43 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: Theme.colors.background,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
+    ...Theme.header.default,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 22,
-    backgroundColor: '#F8F8F8',
+    ...Theme.header.backButton,
   },
   backIcon: {
     fontSize: 20,
-    color: '#000000',
+    color: Theme.colors.text,
   },
   headerContent: {
     flex: 1,
     alignItems: 'center',
   },
   stepIndicator: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 4,
+    ...Theme.header.stepIndicator,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#000000',
+    ...Theme.header.title,
   },
   progressContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: Theme.spacing.xl,
+    paddingVertical: Theme.spacing.base,
+    backgroundColor: Theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: Theme.colors.border,
   },
   progressBar: {
     height: 4,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: Theme.colors.borderSecondary,
     borderRadius: 2,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#007AFF',
+    backgroundColor: Theme.colors.primary,
     borderRadius: 2,
   },
   content: {
@@ -394,11 +381,11 @@ const styles = StyleSheet.create({
     color: '#CCCCCC',
   },
   bottomContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: Theme.spacing.xl,
+    paddingVertical: Theme.spacing.xl,
+    backgroundColor: Theme.colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderTopColor: Theme.colors.border,
   },
   summaryContainer: {
     backgroundColor: '#F8F9FA',
@@ -418,20 +405,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   generateButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: 'center',
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    ...Theme.buttons.primary,
   },
   generateButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
+    ...Theme.buttons.primaryText,
   },
   loadingContainer: {
     flex: 1,

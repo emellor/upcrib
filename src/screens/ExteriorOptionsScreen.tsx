@@ -13,6 +13,7 @@ import {
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import Theme from '../constants/theme';
 
 type ExteriorOptionsScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -499,25 +500,13 @@ const componentStyles = StyleSheet.create({
     fontWeight: '500',
   },
   generateButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: 'center',
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    ...Theme.buttons.primary,
   },
   generateButtonDisabled: {
-    backgroundColor: '#E0E0E0',
-    shadowOpacity: 0,
-    elevation: 0,
+    ...Theme.buttons.disabled,
   },
   generateButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
+    ...Theme.buttons.primaryText,
   },
   generateButtonTextDisabled: {
     color: '#A0A0A0',

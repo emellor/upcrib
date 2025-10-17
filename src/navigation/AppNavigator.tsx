@@ -13,6 +13,7 @@ import DesignScreen from '../screens/DesignScreen';
 import ResultScreen from '../screens/ResultScreen';
 import MoodBoardScreen from '../screens/MoodBoardScreen';
 import MoodDetailScreen from '../screens/MoodDetailScreen';
+import HistoryScreen from '../screens/HistoryScreen';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -27,6 +28,7 @@ export type RootStackParamList = {
   Result: { sessionId: string; imageUrl?: string; answers?: { [questionId: string]: string }; originalImageUrl?: string; results?: any[] };
   MoodBoard: undefined;
   MoodDetail: { moodBoard: any };
+  History: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -60,6 +62,7 @@ const AppNavigator: React.FC = () => {
         />
         <Stack.Screen name="MoodBoard" component={MoodBoardScreen} />
         <Stack.Screen name="MoodDetail" component={MoodDetailScreen} />
+        <Stack.Screen name="History" component={HistoryScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

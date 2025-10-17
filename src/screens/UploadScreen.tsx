@@ -15,6 +15,7 @@ import { RouteProp } from '@react-navigation/native';
 import { launchImageLibrary, launchCamera, ImagePickerResponse, MediaType, PhotoQuality } from 'react-native-image-picker';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useImageUpload } from '../hooks/useImageUpload';
+import Theme from '../constants/theme';
 
 type UploadScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Upload'>;
 type UploadScreenRouteProp = RouteProp<RootStackParamList, 'Upload'>;
@@ -406,20 +407,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   continueButton: {
-    backgroundColor: '#D4A574',
-    paddingVertical: 15,
-    borderRadius: 25,
-    alignItems: 'center',
+    ...Theme.buttons.primary,
     marginTop: 'auto',
     marginBottom: 30,
   },
   continueButtonDisabled: {
-    backgroundColor: '#E0E0E0',
+    ...Theme.buttons.disabled,
   },
   continueButtonText: {
+    ...Theme.buttons.primaryText,
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
   processingContainer: {
     flexDirection: 'row',

@@ -14,6 +14,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { enhancedStyleRenovationApi, ColorPalette } from '../services/enhancedStyleRenovationApi';
+import Theme from '../constants/theme';
 
 type ColorPaletteScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -279,67 +280,51 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Theme.colors.background,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
+    ...Theme.header.default,
+    shadowColor: Theme.colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 22,
-    backgroundColor: '#F8F8F8',
+    ...Theme.header.backButton,
   },
   backIcon: {
     fontSize: 20,
-    color: '#000000',
+    color: Theme.colors.text,
   },
   headerContent: {
     flex: 1,
     alignItems: 'center',
   },
   stepIndicator: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 4,
+    ...Theme.header.stepIndicator,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#000000',
+    ...Theme.header.title,
   },
   skipButton: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '500',
+    ...Theme.buttons.linkText,
   },
   progressContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: Theme.spacing.xl,
+    paddingVertical: Theme.spacing.base,
+    backgroundColor: Theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: Theme.colors.border,
   },
   progressBar: {
     height: 4,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: Theme.colors.borderSecondary,
     borderRadius: 2,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#007AFF',
+    backgroundColor: Theme.colors.primary,
     borderRadius: 2,
   },
   content: {
@@ -448,39 +433,24 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   bottomContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: Theme.spacing.xl,
+    paddingVertical: Theme.spacing.xl,
+    backgroundColor: Theme.colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    borderTopColor: Theme.colors.border,
+    ...Theme.shadows.sm,
   },
   nextButton: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: 'center',
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    ...Theme.buttons.primary,
   },
   nextButtonDisabled: {
-    backgroundColor: '#E2E8F0',
-    shadowOpacity: 0,
+    ...Theme.buttons.disabled,
   },
   nextButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
+    ...Theme.buttons.primaryText,
   },
   nextButtonTextDisabled: {
-    color: '#94A3B8',
+    ...Theme.buttons.disabledText,
   },
   scrollContent: {
     paddingBottom: 20,
