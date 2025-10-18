@@ -37,7 +37,7 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
   route,
 }) => {
   const { sessionId, imageUri } = route.params;
-  const [selectedPaletteId, setSelectedPaletteId] = useState<string | null>(null);
+  const [selectedPaletteId, setSelectedPaletteId] = useState<string | null>('surprise-me');
   const [colorPalettes, setColorPalettes] = useState<ColorPalette[]>([]);
   const [loading, setLoading] = useState(true);
 
