@@ -61,6 +61,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
   }, [history]); // Remove refreshHistory from deps - it's stable from useCallback
 
   const handleBack = () => {
+    console.log('Navigating back from HistoryScreen');
     navigation.goBack();
   };
 
@@ -226,12 +227,21 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
       
       {/* Header */}
       <View style={GlobalStyles.header}>
-        <TouchableOpacity onPress={handleBack} style={GlobalStyles.backButton}>
+        <TouchableOpacity 
+          onPress={handleBack} 
+          style={[GlobalStyles.backButton, { zIndex: 10 }]}
+          activeOpacity={0.7}
+        >
           <Text style={GlobalStyles.backIcon}>←</Text>
         </TouchableOpacity>
-        <View style={GlobalStyles.headerContent}>
-          <Text style={GlobalStyles.headerTitle}>History</Text>
+        <View style={[GlobalStyles.headerContent, { pointerEvents: 'none' }]}>
+          <Image 
+            source={require('../images/logo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
         </View>
+        <View style={styles.headerSpacer} />
 {/*         <TouchableOpacity 
           onPress={handleClearHistory} 
           style={styles.clearButton}
@@ -394,6 +404,13 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
 
 // Screen-specific styles only - common styles are in GlobalStyles
 const styles = StyleSheet.create({
+  headerLogo: {
+    height: 40,
+    alignSelf: 'center',
+  },
+  headerSpacer: {
+    width: 44,
+  },
   clearButton: {
     padding: 8,
   },

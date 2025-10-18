@@ -671,6 +671,12 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
           {/* Close Button Header (only in modal mode) */}
           {onClose && (
             <View style={styles.closeHeader}>
+              <View style={styles.headerSpacer} />
+              <Image 
+                source={require('../images/logo.png')}
+                style={styles.headerLogo}
+                resizeMode="contain"
+              />
               <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
@@ -1062,22 +1068,149 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
               <View style={styles.infoModal}>
                 <Text style={styles.modalTitle}>Design Details</Text>
                 
-                {sessionData && (
-                  <View style={styles.infoContent}>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Status:</Text>
-                      <Text style={styles.infoValue}>Completed ✅</Text>
-                    </View>
-                    
-                    {sessionData.generatedImage && (
+                {(sessionData || enhancedStyleRenovationStatus) && (
+                  <ScrollView style={styles.infoContent} showsVerticalScrollIndicator={false}>
+                    {/* Session Info */}
+                    <View style={styles.infoSection}>
+                      <Text style={styles.infoSectionTitle}>Session Information</Text>
+                      
                       <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Generated:</Text>
-                        <Text style={styles.infoValue}>
-                          {new Date(sessionData.generatedImage.generatedAt).toLocaleDateString()}
+                        <Text style={styles.infoLabel}>Session ID:</Text>
+                        <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="middle">
+                          {sessionId.slice(-8)}
                         </Text>
                       </View>
+                      
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Status:</Text>
+                        <Text style={styles.infoValue}>Completed ✅</Text>
+                      </View>
+                      
+                      {sessionData?.createdAt && (
+                        <View style={styles.infoRow}>
+                          <Text style={styles.infoLabel}>Created:</Text>
+                          <Text style={styles.infoValue}>
+                            {new Date(sessionData.createdAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Generation Info */}
+                    {(sessionData?.generatedImage || enhancedStyleRenovationStatus?.generatedImage) && (
+                      <View style={styles.infoSection}>
+                        <Text style={styles.infoSectionTitle}>Generation Details</Text>
+                        
+                        <View style={styles.infoRow}>
+                          <Text style={styles.infoLabel}>Generated:</Text>
+                          <Text style={styles.infoValue}>
+                            {new Date(
+                              enhancedStyleRenovationStatus?.generatedImage?.generatedAt || 
+                              sessionData?.generatedImage?.generatedAt || 
+                              new Date()
+                            ).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </Text>
+                        </View>
+                        
+                        <View style={styles.infoRow}>
+                          <Text style={styles.infoLabel}>Format:</Text>
+                          <Text style={styles.infoValue}>
+                            {(enhancedStyleRenovationStatus?.generatedImage?.extension || 
+                              sessionData?.generatedImage?.extension || 
+                              'jpg').toUpperCase()}
+                          </Text>
+                        </View>
+                      </View>
                     )}
-                  </View>
+
+                    {/* Original Image Info */}
+                    {(sessionData?.image || enhancedStyleRenovationStatus?.originalImage) && (
+                      <View style={styles.infoSection}>
+                        <Text style={styles.infoSectionTitle}>Original Image</Text>
+                        
+                        {sessionData?.image?.uploadedAt && (
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Uploaded:</Text>
+                            <Text style={styles.infoValue}>
+                              {new Date(sessionData.image.uploadedAt).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </Text>
+                          </View>
+                        )}
+                        
+                        {sessionData?.image?.size && (
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>File Size:</Text>
+                            <Text style={styles.infoValue}>
+                              {(sessionData.image.size / 1024 / 1024).toFixed(2)} MB
+                            </Text>
+                          </View>
+                        )}
+                        
+                        {sessionData?.image?.width && sessionData?.image?.height && (
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Dimensions:</Text>
+                            <Text style={styles.infoValue}>
+                              {sessionData.image.width} × {sessionData.image.height}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Design Preferences */}
+                    {questions.length > 0 && Object.keys(answers).length > 0 && (
+                      <View style={styles.infoSection}>
+                        <Text style={styles.infoSectionTitle}>Design Preferences</Text>
+                        
+                        <View style={styles.infoRow}>
+                          <Text style={styles.infoLabel}>Questions Answered:</Text>
+                          <Text style={styles.infoValue}>
+                            {Object.keys(answers).length} of {questions.length}
+                          </Text>
+                        </View>
+                        
+                        {questions.slice(0, 3).map((question, index) => {
+                          const answer = answers[question.id];
+                          if (!answer) return null;
+                          
+                          return (
+                            <View key={question.id} style={styles.infoPreferenceRow}>
+                              <Text style={styles.infoPreferenceLabel} numberOfLines={1}>
+                                {question.prompt}
+                              </Text>
+                              <Text style={styles.infoPreferenceValue} numberOfLines={1}>
+                                {answer}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                        
+                        {questions.length > 3 && (
+                          <Text style={styles.infoMorePreferences}>
+                            +{questions.length - 3} more preferences
+                          </Text>
+                        )}
+                      </View>
+                    )}
+                  </ScrollView>
                 )}
                 
                 <TouchableOpacity 
@@ -1102,12 +1235,20 @@ const styles = StyleSheet.create({
   },
   closeHeader: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 10,
     backgroundColor: Theme.colors.background,
+  },
+  headerSpacer: {
+    width: 36,
+  },
+  headerLogo: {
+    height: 40,
+    flex: 1,
+    alignSelf: 'center',
   },
   closeButton: {
     width: 36,
@@ -1768,25 +1909,63 @@ const styles = StyleSheet.create({
     ...Theme.cards.elevated,
     padding: Theme.spacing.xl,
     width: '100%',
-    maxWidth: 320,
+    maxWidth: 380,
+    maxHeight: '80%',
   },
   infoContent: {
     marginBottom: Theme.spacing.xl,
+    maxHeight: 450,
+  },
+  infoSection: {
+    marginBottom: Theme.spacing.lg,
+    paddingBottom: Theme.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.border,
+  },
+  infoSectionTitle: {
+    fontSize: Theme.typography.fontSizes.base,
+    fontWeight: Theme.typography.fontWeights.bold as any,
+    color: Theme.colors.text,
+    marginBottom: Theme.spacing.md,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: Theme.spacing.sm,
   },
   infoLabel: {
     fontSize: Theme.typography.fontSizes.sm,
     color: Theme.colors.textSecondary,
+    flex: 1,
   },
   infoValue: {
     fontSize: Theme.typography.fontSizes.sm,
     color: Theme.colors.text,
     fontWeight: Theme.typography.fontWeights.semibold as any,
+    flex: 1,
+    textAlign: 'right',
+  },
+  infoPreferenceRow: {
+    paddingVertical: Theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.border,
+  },
+  infoPreferenceLabel: {
+    fontSize: Theme.typography.fontSizes.sm,
+    color: Theme.colors.textSecondary,
+    marginBottom: Theme.spacing.xs,
+  },
+  infoPreferenceValue: {
+    fontSize: Theme.typography.fontSizes.sm,
+    color: Theme.colors.primary,
+    fontWeight: Theme.typography.fontWeights.medium as any,
+  },
+  infoMorePreferences: {
+    fontSize: Theme.typography.fontSizes.sm,
+    color: Theme.colors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: Theme.spacing.sm,
   },
 
   // Spacing

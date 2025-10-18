@@ -123,7 +123,11 @@ const MoodBoardScreen: React.FC<MoodBoardProps> = ({ navigation }) => {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mood Boards</Text>
+        <Image 
+          source={require('../images/logo.png')}
+          style={styles.headerLogo}
+          resizeMode="contain"
+        />
         <TouchableOpacity 
           style={styles.addButton}
           onPress={() => setShowCreateModal(true)}
@@ -227,6 +231,11 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 20,
     color: '#333333',
+  },
+  headerLogo: {
+    flex: 1,
+    height: 40,
+    alignSelf: 'center',
   },
   headerTitle: {
     flex: 1,

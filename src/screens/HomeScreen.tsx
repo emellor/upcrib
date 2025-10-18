@@ -131,10 +131,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       
       {/* Header */}
       <View style={styles.header}>
-{/*         <TouchableOpacity style={styles.settingsButton}>
-          <Text style={styles.settingsIcon}>⚙️</Text>
-        </TouchableOpacity> */}
-        <Text style={styles.logo}>upCrib</Text>
+        <View style={styles.headerSpacer} />
+        <Image 
+          source={require('../images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <View style={styles.headerSpacer} />
       </View>
 
@@ -271,10 +273,8 @@ const styles = StyleSheet.create({
   },
   logo: {
     flex: 1,
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#000000',
-    textAlign: 'center',
+    height: 40,
+    alignSelf: 'center',
   },
   headerSpacer: {
     width: 40,
