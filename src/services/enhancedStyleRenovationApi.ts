@@ -8,6 +8,7 @@ export interface ArchitecturalStyle {
   description: string;
   period: string;
   characteristics: string[];
+  iconUri?: string; // Optional icon URL from API
 }
 
 export interface ColorPalette {

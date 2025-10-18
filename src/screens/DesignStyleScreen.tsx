@@ -9,6 +9,7 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -315,7 +316,15 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
                     styles.iconContainer,
                     selectedStyle === style.id && styles.selectedIconContainer,
                   ]}>
-                    <Text style={styles.styleEmoji}>🏠</Text>
+                    {style.iconUri ? (
+                      <Image 
+                        source={{ uri: style.iconUri }}
+                        style={styles.styleIcon}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Text style={styles.styleEmoji}>🏠</Text>
+                    )}
                   </View>
                   <Text style={[
                     styles.styleText,
@@ -453,6 +462,12 @@ const styles = StyleSheet.create({
   },
   styleEmoji: {
     fontSize: 32,
+  },
+  styleIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    overflow: 'hidden',
   },
   styleText: {
     fontSize: 15,
