@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    marginTop: 115,
+    marginTop: 125,
     backgroundColor: Theme.colors.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

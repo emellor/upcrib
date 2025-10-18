@@ -1091,7 +1091,11 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
                         <View style={styles.infoRow}>
                           <Text style={styles.infoLabel}>Created:</Text>
                           <Text style={styles.infoValue}>
-                            {new Date(sessionData.createdAt).toLocaleDateString('en-US', {
+                            {new Date(
+                              typeof sessionData.createdAt === 'number' 
+                                ? sessionData.createdAt * 1000 // Convert Unix timestamp (seconds) to milliseconds
+                                : sessionData.createdAt
+                            ).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
                               year: 'numeric',
@@ -1111,17 +1115,21 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
                         <View style={styles.infoRow}>
                           <Text style={styles.infoLabel}>Generated:</Text>
                           <Text style={styles.infoValue}>
-                            {new Date(
-                              enhancedStyleRenovationStatus?.generatedImage?.generatedAt || 
-                              sessionData?.generatedImage?.generatedAt || 
-                              new Date()
-                            ).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
+                            {(() => {
+                              const timestamp = enhancedStyleRenovationStatus?.generatedImage?.generatedAt || 
+                                               sessionData?.generatedImage?.generatedAt || 
+                                               Date.now();
+                              const dateValue = typeof timestamp === 'number' 
+                                ? timestamp * 1000 // Convert Unix timestamp (seconds) to milliseconds
+                                : timestamp;
+                              return new Date(dateValue).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              });
+                            })()}
                           </Text>
                         </View>
                         
@@ -1145,7 +1153,11 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
                           <View style={styles.infoRow}>
                             <Text style={styles.infoLabel}>Uploaded:</Text>
                             <Text style={styles.infoValue}>
-                              {new Date(sessionData.image.uploadedAt).toLocaleDateString('en-US', {
+                              {new Date(
+                                typeof sessionData.image.uploadedAt === 'number'
+                                  ? sessionData.image.uploadedAt * 1000 // Convert Unix timestamp (seconds) to milliseconds
+                                  : sessionData.image.uploadedAt
+                              ).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
                                 year: 'numeric',
