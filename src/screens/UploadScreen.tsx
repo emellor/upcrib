@@ -124,13 +124,17 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
         <TouchableOpacity onPress={handleBack} style={styles.backButton} disabled={isProcessing}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerLogoContainer}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Home')}
+          style={styles.headerLogoContainer}
+          activeOpacity={0.7}
+        >
           <Image 
             source={require('../images/logo.png')} 
             style={styles.headerLogo}
             resizeMode="contain"
           />
-        </View>
+        </TouchableOpacity>
         <View style={styles.placeholder} />
       </View>
 

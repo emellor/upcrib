@@ -234,15 +234,19 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
         >
           <Text style={GlobalStyles.backIcon}>←</Text>
         </TouchableOpacity>
-        <View style={[GlobalStyles.headerContent, { pointerEvents: 'none' }]}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Home')}
+          style={GlobalStyles.headerContent}
+          activeOpacity={0.7}
+        >
           <Image 
             source={require('../images/logo.png')}
             style={styles.headerLogo}
             resizeMode="contain"
           />
-        </View>
-        <View style={styles.headerSpacer} />
-         <TouchableOpacity 
+        </TouchableOpacity>
+{/*          <View style={styles.headerSpacer} />
+        <TouchableOpacity 
           onPress={handleClearHistory} 
           style={styles.clearButton}
           disabled={history.length === 0}
@@ -250,7 +254,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
           <Text style={[styles.clearButtonText, history.length === 0 && styles.clearButtonDisabled]}>
             Clear
           </Text>
-        </TouchableOpacity> 
+        </TouchableOpacity>  */}
       </View>
 
       {/* Content */}

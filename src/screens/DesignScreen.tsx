@@ -186,13 +186,17 @@ const DesignScreen: React.FC<DesignScreenProps> = ({ navigation, route }) => {
         <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
-        <View style={styles.headerLogoContainer}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Home')}
+          style={styles.headerLogoContainer}
+          activeOpacity={0.7}
+        >
           <Image 
             source={require('../images/logo.png')} 
             style={styles.headerLogo}
             resizeMode="contain"
           />
-        </View>
+        </TouchableOpacity>
         <View style={styles.placeholder} />
       </View>
 

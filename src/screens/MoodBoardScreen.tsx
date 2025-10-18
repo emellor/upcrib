@@ -123,11 +123,17 @@ const MoodBoardScreen: React.FC<MoodBoardProps> = ({ navigation }) => {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
-        <Image 
-          source={require('../images/logo.png')}
-          style={styles.headerLogo}
-          resizeMode="contain"
-        />
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Home')}
+          style={{ flex: 1 }}
+          activeOpacity={0.7}
+        >
+          <Image 
+            source={require('../images/logo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
         <TouchableOpacity 
           style={styles.addButton}
           onPress={() => setShowCreateModal(true)}
