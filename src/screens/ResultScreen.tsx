@@ -671,12 +671,6 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
           {/* Close Button Header (only in modal mode) */}
           {onClose && (
             <View style={styles.closeHeader}>
-              <View style={styles.headerSpacer} />
-              <Image 
-                source={require('../images/logo.png')}
-                style={styles.headerLogo}
-                resizeMode="contain"
-              />
               <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
@@ -1235,20 +1229,12 @@ const styles = StyleSheet.create({
   },
   closeHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 10,
     paddingBottom: 10,
     backgroundColor: Theme.colors.background,
-  },
-  headerSpacer: {
-    width: 36,
-  },
-  headerLogo: {
-    height: 40,
-    flex: 1,
-    alignSelf: 'center',
   },
   closeButton: {
     width: 36,

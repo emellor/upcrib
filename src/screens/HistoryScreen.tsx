@@ -383,20 +383,22 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
       <Modal
         visible={showResultModal}
         animationType="slide"
-        presentationStyle="fullScreen"
+        transparent={true}
         onRequestClose={handleCloseResultModal}
       >
-        {resultModalData && (
-          <ResultScreen
-            navigation={navigation as any}
-            route={{
-              params: resultModalData,
-              key: 'Result',
-              name: 'Result' as const,
-            } as any}
-            onClose={handleCloseResultModal}
-          />
-        )}
+        <View style={styles.modalContainer}>
+          {resultModalData && (
+            <ResultScreen
+              navigation={navigation as any}
+              route={{
+                params: resultModalData,
+                key: 'Result',
+                name: 'Result' as const,
+              } as any}
+              onClose={handleCloseResultModal}
+            />
+          )}
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -410,6 +412,19 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 44,
+  },
+  modalContainer: {
+    flex: 1,
+    marginTop: 115,
+    backgroundColor: Theme.colors.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   clearButton: {
     padding: 8,
