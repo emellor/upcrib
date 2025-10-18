@@ -193,7 +193,7 @@ export const Theme = {
     },
     
     disabled: {
-      backgroundColor: '#E2E8F0',
+      backgroundColor: '#F5F0EA',
       borderRadius: 16,
       paddingVertical: 18,
       paddingHorizontal: 24,
@@ -201,7 +201,7 @@ export const Theme = {
       justifyContent: 'center' as const,
     },
     disabledText: {
-      color: '#94A3B8',
+      color: '#C4B5A0',
       fontSize: 18,
       fontWeight: '600' as const,
     },
