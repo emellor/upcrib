@@ -242,7 +242,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
           />
         </View>
         <View style={styles.headerSpacer} />
-{/*         <TouchableOpacity 
+         <TouchableOpacity 
           onPress={handleClearHistory} 
           style={styles.clearButton}
           disabled={history.length === 0}
@@ -250,7 +250,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
           <Text style={[styles.clearButtonText, history.length === 0 && styles.clearButtonDisabled]}>
             Clear
           </Text>
-        </TouchableOpacity> */}
+        </TouchableOpacity> 
       </View>
 
       {/* Content */}

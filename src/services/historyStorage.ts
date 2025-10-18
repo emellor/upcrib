@@ -155,86 +155,19 @@ export class HistoryStorageService {
       const exists = await RNFS.exists(historyFilePath);
       
       if (!exists) {
-        // Return sample data for testing
-        return this.getSampleData();
+        // Return empty array if no history file exists
+        return [];
       }
       
       const historyData = await RNFS.readFile(historyFilePath, 'utf8');
       const history: DesignHistoryItem[] = JSON.parse(historyData);
       
-      // If history is empty, return sample data
-      if (history.length === 0) {
-        return this.getSampleData();
-      }
-      
       return history;
     } catch (error) {
       console.error('Failed to get design history:', error);
-      // Return sample data as fallback
-      return this.getSampleData();
+      // Return empty array as fallback
+      return [];
     }
-  }
-  
-  /**
-   * Get sample data for testing
-   */
-  private static getSampleData(): DesignHistoryItem[] {
-    return [
-      {
-        id: 'sample-1',
-        sessionId: 'session-sample-001',
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        thumbnail: 'https://picsum.photos/300/300?random=1',
-        originalImage: 'https://picsum.photos/300/300?random=2',
-        status: 'completed',
-        title: 'Modern Living Room',
-      },
-      {
-        id: 'sample-2',
-        sessionId: 'session-sample-002',
-        createdAt: new Date(Date.now() - 172800000).toISOString(),
-        thumbnail: 'https://picsum.photos/300/300?random=3',
-        originalImage: 'https://picsum.photos/300/300?random=4',
-        status: 'completed',
-        title: 'Kitchen Renovation',
-      },
-      {
-        id: 'sample-3',
-        sessionId: 'session-sample-003',
-        createdAt: new Date(Date.now() - 259200000).toISOString(),
-        thumbnail: 'https://picsum.photos/300/300?random=5',
-        originalImage: 'https://picsum.photos/300/300?random=6',
-        status: 'completed',
-        title: 'Bedroom Makeover',
-      },
-      {
-        id: 'sample-4',
-        sessionId: 'session-sample-004',
-        createdAt: new Date(Date.now() - 345600000).toISOString(),
-        thumbnail: 'https://picsum.photos/300/300?random=7',
-        originalImage: 'https://picsum.photos/300/300?random=8',
-        status: 'completed',
-        title: 'Bathroom Update',
-      },
-      {
-        id: 'sample-5',
-        sessionId: 'session-sample-005',
-        createdAt: new Date(Date.now() - 432000000).toISOString(),
-        thumbnail: 'https://picsum.photos/300/300?random=9',
-        originalImage: 'https://picsum.photos/300/300?random=10',
-        status: 'completed',
-        title: 'Home Office Design',
-      },
-      {
-        id: 'sample-6',
-        sessionId: 'session-sample-006',
-        createdAt: new Date(Date.now() - 518400000).toISOString(),
-        thumbnail: 'https://picsum.photos/300/300?random=11',
-        originalImage: 'https://picsum.photos/300/300?random=12',
-        status: 'completed',
-        title: 'Dining Room Refresh',
-      },
-    ];
   }
   
   /**

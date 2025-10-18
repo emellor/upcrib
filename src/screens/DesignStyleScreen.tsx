@@ -19,6 +19,7 @@ import Theme from '../constants/theme';
 import GlobalStyles from '../constants/globalStyles';
 import { HistoryStorageService, DesignHistoryItem } from '../services/historyStorage';
 import RNFS from 'react-native-fs';
+import backgroundPollingService from '../services/backgroundPollingService';
 
 type DesignStyleScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -182,6 +183,10 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
       // Navigate to History screen to show the generating design
       navigation.navigate('History' as any);
       
+      // 🔔 Start background polling and show notification
+      console.log('🔔 Starting background polling for session:', sessionId);
+      await backgroundPollingService.addSession(sessionId);
+      
       // Start the generation process in the background
       enhancedStyleRenovationApi.createAndWaitForCompletion(
         {
@@ -195,6 +200,14 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
       ).then(async (result) => {
         console.log('Enhanced style renovation completed:', result);
         
+        // 🔔 Stop polling and show completion notification
+        console.log('🔔 Generation complete, stopping polling and showing notification');
+        await backgroundPollingService.removeSession(sessionId);
+        
+        // Import notificationService at the top of the file
+        const notificationService = require('../services/notificationService').default;
+        await notificationService.notifyGenerationComplete(sessionId);
+        
         // Update the history item with completed status and generated image
         const updatedItem: DesignHistoryItem = {
           ...historyItem,
@@ -205,6 +218,13 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         await HistoryStorageService.saveDesignToHistory(updatedItem);
       }).catch(async (error) => {
         console.error('Generate renovation error:', error);
+        
+        // 🔔 Stop polling and show failure notification
+        console.log('🔔 Generation failed, stopping polling and showing notification');
+        await backgroundPollingService.removeSession(sessionId);
+        
+        const notificationService = require('../services/notificationService').default;
+        await notificationService.notifyGenerationFailed(sessionId);
         
         // Update the history item with failed status
         const failedItem: DesignHistoryItem = {

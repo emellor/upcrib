@@ -26,6 +26,7 @@ import { apiClient } from '../services/apiClient';
 import { SessionData } from '../types/api';
 import Theme from '../constants/theme';
 import { HistoryStorageService, DesignHistoryItem } from '../services/historyStorage';
+import backgroundPollingService from '../services/backgroundPollingService';
 
 type ResultScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Result'>;
 type ResultScreenRouteProp = RouteProp<RootStackParamList, 'Result'>;
@@ -341,6 +342,12 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
         if (enhancedData.success) {
           // Store the Enhanced Style Renovation status
           setEnhancedStyleRenovationStatus(enhancedData.data);
+          
+          // If status is 'generating', start background polling for notifications
+          if (enhancedData.data.status === 'generating' && !enhancedData.data.generatedImage) {
+            console.log('Image is still generating, starting background polling');
+            await backgroundPollingService.addSession(sessionId);
+          }
           
           console.log('Enhanced data originalImage:', enhancedData.data.originalImage);
           // Update session data with the correct original image URL
