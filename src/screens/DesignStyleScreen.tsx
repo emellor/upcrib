@@ -266,7 +266,8 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         title: `${selectedStyleName} Design`,
       };
       
-      // Save to history with generating status
+      // Save initial generating status to history (will be updated when completed)
+      console.log('💾 [DesignStyleScreen] Saving initial generating design to history');
       await HistoryStorageService.saveDesignToHistory(historyItem);
       
       // Navigate to History screen to show the generating design
@@ -291,13 +292,18 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
       console.log('Enhanced Style Renovation Request:', renovationRequest);
       
       // Start the generation process using the new API structure
-      enhancedStyleRenovationApi.createAndWaitForCompletion(
-        renovationRequest,
-        (status) => {
-          console.log('Generation status:', status);
-        }
-      ).then(async (result) => {
-        console.log('Enhanced style renovation completed:', result);
+      console.log('🚀 [DesignStyleScreen] Starting Enhanced Style Renovation API call...');
+      console.log('📋 Request details:', JSON.stringify(renovationRequest, null, 2));
+      
+      try {
+        const result = await enhancedStyleRenovationApi.createAndWaitForCompletion(
+          renovationRequest,
+          (status) => {
+            console.log('📊 Generation status update:', status);
+          }
+        );
+        
+        console.log('✅ Enhanced style renovation completed successfully:', result);
         
         // 🔔 Stop polling and show completion notification
         console.log('🔔 Generation complete, stopping polling and showing notification');
@@ -306,16 +312,12 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         const notificationService = require('../services/notificationService').default;
         await notificationService.notifyGenerationComplete(sessionId);
         
-        // Update the history item with completed status and generated image
-        const updatedItem: DesignHistoryItem = {
-          ...historyItem,
-          status: 'completed',
-          thumbnail: result.imageUrl,
-        };
+        // Note: History update is now handled by EnhancedStyleRenovationApi.saveCompletedRenovation()
+        // when status polling detects completion - no need to duplicate here
         
-        await HistoryStorageService.saveDesignToHistory(updatedItem);
-      }).catch(async (error) => {
-        console.error('Generate renovation error:', error);
+      } catch (error) {
+        console.error('❌ Enhanced Style Renovation API call failed!');
+        console.error('Error details:', error);
         
         // 🔔 Stop polling and show failure notification
         console.log('🔔 Generation failed, stopping polling and showing notification');
@@ -324,14 +326,19 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         const notificationService = require('../services/notificationService').default;
         await notificationService.notifyGenerationFailed(sessionId);
         
-        // Update the history item with failed status
-        const failedItem: DesignHistoryItem = {
-          ...historyItem,
-          status: 'failed',
-        };
-        
-        await HistoryStorageService.saveDesignToHistory(failedItem);
-      });
+        // Update the history item to failed status
+        try {
+          const failedItem: DesignHistoryItem = {
+            ...historyItem,
+            status: 'failed',
+            title: `${selectedStyleName} Design (Failed)`
+          };
+          await HistoryStorageService.saveDesignToHistory(failedItem);
+          console.log('💾 Updated history item to failed status');
+        } catch (historyError) {
+          console.error('Failed to update history with error status:', historyError);
+        }
+      }
       
     } catch (error: any) {
       console.error('Failed to start generation:', error);

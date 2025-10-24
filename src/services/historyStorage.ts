@@ -138,10 +138,16 @@ export class HistoryStorageService {
       // Check if design already exists (update if it does)
       const existingIndex = existingHistory.findIndex(item => item.sessionId === design.sessionId);
       
+      console.log(`💾 [HistoryStorage] Looking for existing design with sessionId: ${design.sessionId}`);
+      console.log(`💾 [HistoryStorage] Found existing design at index: ${existingIndex}`);
+      
       if (existingIndex >= 0) {
+        console.log(`💾 [HistoryStorage] UPDATING existing design: ${existingHistory[existingIndex].title} -> ${design.title}`);
+        console.log(`💾 [HistoryStorage] Status change: ${existingHistory[existingIndex].status} -> ${design.status}`);
         // Update existing design
         existingHistory[existingIndex] = designWithLocalPaths;
       } else {
+        console.log(`💾 [HistoryStorage] CREATING new design: ${design.title} (${design.status})`);
         // Add new design to the beginning of the array
         existingHistory.unshift(designWithLocalPaths);
       }

@@ -92,6 +92,39 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
     setShowOptionsModal(true);
   };
 
+  const handleForceComplete = async (item: DesignHistoryItem) => {
+    if (item.status !== 'generating') return;
+    
+    try {
+      console.log('🧪 [FORCE] Manually completing design:', item.sessionId);
+      
+      // Import and call the Enhanced Style Renovation API to force completion
+      const { enhancedStyleRenovationApi } = require('../services/enhancedStyleRenovationApi');
+      
+      // Create mock completion data
+      const mockCompletionData = {
+        sessionId: item.sessionId,
+        status: 'completed',
+        originalImage: { url: '/mock/original.jpg' },
+        generatedImage: { url: '/mock/generated.jpg' },
+        styleData: {
+          architecturalStyle: 'test-style'
+        }
+      };
+      
+      await enhancedStyleRenovationApi.saveCompletedRenovation(mockCompletionData);
+      console.log('🧪 [FORCE] Manual completion successful');
+      
+      // Refresh the history to see the update
+      refreshHistory();
+      
+      Alert.alert('Success', 'Design manually completed for testing');
+    } catch (error) {
+      console.error('🧪 [FORCE] Manual completion failed:', error);
+      Alert.alert('Error', 'Failed to manually complete design');
+    }
+  };
+
   const handleDeleteItem = () => {
     if (!selectedItem) return;
     
@@ -143,6 +176,51 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
       'Are you sure you want to clear all design history? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Clean Duplicates', 
+          style: 'default',
+          onPress: async () => {
+            try {
+              // Remove stuck generating items and duplicates
+              const allDesigns = await HistoryStorageService.getDesignHistory();
+              console.log('🧹 Before cleanup:', allDesigns.length, 'designs');
+              
+              // Group by sessionId
+              const sessionGroups = allDesigns.reduce((groups: any, design) => {
+                if (!groups[design.sessionId]) {
+                  groups[design.sessionId] = [];
+                }
+                groups[design.sessionId].push(design);
+                return groups;
+              }, {});
+              
+              // Keep only the best version of each session
+              const cleanedDesigns = Object.values(sessionGroups).map((designs: any) => {
+                // Prefer completed > generating > failed
+                const completed = designs.find((d: any) => d.status === 'completed');
+                const generating = designs.find((d: any) => d.status === 'generating');
+                const failed = designs.find((d: any) => d.status === 'failed');
+                
+                return completed || failed || generating; // Keep generating only if no completed/failed
+              }).filter(Boolean);
+              
+              console.log('🧹 After cleanup:', cleanedDesigns.length, 'designs');
+              
+              // Save cleaned history
+              const historyFilePath = `${await import('react-native-fs').then(fs => fs.DocumentDirectoryPath)}/design_history.json`;
+              await import('react-native-fs').then(fs => 
+                fs.writeFile(historyFilePath, JSON.stringify(cleanedDesigns, null, 2), 'utf8')
+              );
+              
+              Alert.alert('Success', `Cleaned up duplicates. Removed ${allDesigns.length - cleanedDesigns.length} duplicate items.`);
+              refreshHistory(); // Refresh the display
+              
+            } catch (error) {
+              console.error('Failed to clean duplicates:', error);
+              Alert.alert('Error', 'Failed to clean duplicates');
+            }
+          }
+        },
         { 
           text: 'Debug Info', 
           style: 'default',
@@ -247,16 +325,16 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
             resizeMode="contain"
           />
         </TouchableOpacity>
-{/*          <View style={styles.headerSpacer} />
+        <View style={styles.headerSpacer} />
         <TouchableOpacity 
           onPress={handleClearHistory} 
           style={styles.clearButton}
           disabled={history.length === 0}
         >
           <Text style={[styles.clearButtonText, history.length === 0 && styles.clearButtonDisabled]}>
-            Clear
+            Clean
           </Text>
-        </TouchableOpacity>  */}
+        </TouchableOpacity>
       </View>
 
       {/* Content */}
@@ -329,6 +407,12 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
             <TouchableOpacity style={styles.optionButton} onPress={handleRenameItem}>
               <Text style={styles.optionButtonText}>✏️ Rename</Text>
             </TouchableOpacity>
+            
+            {selectedItem?.status === 'generating' && (
+              <TouchableOpacity style={styles.optionButton} onPress={() => handleForceComplete(selectedItem)}>
+                <Text style={styles.optionButtonText}>🔧 Force Complete (Test)</Text>
+              </TouchableOpacity>
+            )}
             
             <TouchableOpacity style={styles.optionButton} onPress={handleDeleteItem}>
               <Text style={[styles.optionButtonText, styles.deleteOptionText]}>🗑️ Delete</Text>

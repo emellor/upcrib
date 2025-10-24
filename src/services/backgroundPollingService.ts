@@ -213,12 +213,27 @@ class BackgroundPollingService {
    * Handle successful generation completion
    */
   private async handleGenerationComplete(sessionId: string): Promise<void> {
-    console.log(`Design generation complete for session: ${sessionId}`);
+    console.log(`🎉 [BackgroundPolling] Design generation complete for session: ${sessionId}`);
+    
+    try {
+      // Get the full renovation data and save to history
+      const response = await apiClient.getEnhancedStyleRenovationStatus(sessionId);
+      
+      if (response.success && response.data && response.data.status === 'completed') {
+        console.log(`💾 [BackgroundPolling] Saving completed renovation to history...`);
+        
+        // Import and call the Enhanced Style Renovation API to save completed data
+        const { enhancedStyleRenovationApi } = require('./enhancedStyleRenovationApi');
+        await enhancedStyleRenovationApi.saveCompletedRenovation(response.data);
+        
+        console.log(`✅ [BackgroundPolling] Successfully saved completed renovation to history`);
+      }
+    } catch (error) {
+      console.error(`❌ [BackgroundPolling] Failed to save completed renovation:`, error);
+    }
     
     // Show completion notification
     await notificationService.notifyGenerationComplete(sessionId);
-    
-    // History will be updated when user opens the app and refreshes
     
     // Stop polling this session
     await this.removeSession(sessionId);

@@ -108,15 +108,26 @@ const ExteriorOptionsScreen: React.FC<ExteriorOptionsScreenProps> = ({
       // Get the original image URL from route params if available
       const originalImageUrl = route.params.imageUri || 'https://picsum.photos/400/300';
       
+      // Use "Mixed Style" as default for this screen since it allows various preferences
+      const styleId = 'mixed-style';
+      const styleName = 'Mixed Style';
+      
       // Create a history item with "generating" status
       const historyItem: DesignHistoryItem = {
         id: `${sessionId}-${Date.now()}`,
         sessionId: sessionId,
         createdAt: new Date().toISOString(),
-        thumbnail: originalImageUrl, // Use original image as thumbnail while generating
+        thumbnail: originalImageUrl,
         originalImage: originalImageUrl,
         status: 'generating',
-        title: `Design ${sessionId.slice(-6)}`,
+        title: styleName, // Use style name instead of generic "Design"
+        styleId: styleId,
+        renovationData: {
+          originalImageUrl: originalImageUrl,
+          colors: selectedColors,
+          themes: selectedThemes,
+          hasInspirationPhoto: hasInspirationPhoto
+        }
       };
       
       // Save to history with generating status
@@ -125,23 +136,8 @@ const ExteriorOptionsScreen: React.FC<ExteriorOptionsScreenProps> = ({
       // Navigate to History screen to show the generating design
       navigation.navigate('History' as any);
       
-      // Simulate API call - in real implementation, this would be an actual API call
-      setTimeout(async () => {
-        try {
-          // Update the history item with completed status and generated image
-          const updatedItem: DesignHistoryItem = {
-            ...historyItem,
-            status: 'completed',
-            thumbnail: 'https://picsum.photos/400/300?random=' + Date.now(), // Generated image
-          };
-          
-          await HistoryStorageService.saveDesignToHistory(updatedItem);
-          setLoading(false);
-        } catch (error) {
-          console.error('Failed to update history with generated image:', error);
-          setLoading(false);
-        }
-      }, 5000); // 5 seconds to simulate generation
+      // Note: Background polling will automatically detect completion and update the history entry
+      setLoading(false);
       
     } catch (error) {
       console.error('Failed to save to history:', error);

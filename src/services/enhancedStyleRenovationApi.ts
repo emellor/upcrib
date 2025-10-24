@@ -282,27 +282,62 @@ class EnhancedStyleRenovationApi {
     try {
       const { HistoryStorageService } = require('./historyStorage');
       
-      // Create a design history item from the renovation data
-      const historyItem = {
-        id: `${renovationData.sessionId}-${Date.now()}`,
-        sessionId: renovationData.sessionId,
-        createdAt: renovationData.generatedImage?.generatedAt || new Date().toISOString(),
-        thumbnail: `http://localhost:3001${renovationData.generatedImage.url}`,
-        originalImage: `http://localhost:3001${renovationData.originalImage.url}`,
-        generatedImage: `http://localhost:3001${renovationData.generatedImage.url}`,
-        status: 'completed' as const,
-        title: `${renovationData.styleData.architecturalStyle.charAt(0).toUpperCase() + renovationData.styleData.architecturalStyle.slice(1)} Design`,
-        styleData: renovationData.styleData,
-        metadata: {
-          originalImageData: renovationData.originalImage,
-          generatedImageData: renovationData.generatedImage,
-          renovationData: renovationData // Store complete renovation data for modal
-        }
-      };
+      // ALWAYS find and update the existing entry for this sessionId
+      const existingDesigns = await HistoryStorageService.getDesignHistory();
+      console.log(`🔍 [EnhancedStyleApi] Looking for existing design with sessionId: ${renovationData.sessionId}`);
+      console.log(`🔍 [EnhancedStyleApi] Total designs in history: ${existingDesigns.length}`);
       
-      console.log('💾 [EnhancedStyleApi] Saving design to history:', historyItem);
-      await HistoryStorageService.saveDesignToHistory(historyItem);
-      console.log('✅ [EnhancedStyleApi] Successfully saved completed renovation to history');
+      const existingDesign = existingDesigns.find((design: any) => 
+        design.sessionId === renovationData.sessionId
+      );
+      
+      if (existingDesign) {
+        console.log('� [EnhancedStyleApi] UPDATING existing design to completed');
+        
+        // Update the existing design with completed data (preserve original creation data)
+        const updatedItem = {
+          ...existingDesign, // Keep original id, createdAt, title, etc.
+          status: 'completed' as const,
+          thumbnail: `http://localhost:3001${renovationData.generatedImage.url}`,
+          originalImage: `http://localhost:3001${renovationData.originalImage.url}`,
+          generatedImage: `http://localhost:3001${renovationData.generatedImage.url}`,
+          styleData: renovationData.styleData,
+          metadata: {
+            originalImageData: renovationData.originalImage,
+            generatedImageData: renovationData.generatedImage,
+            renovationData: renovationData // Store complete renovation data for modal
+          }
+        };
+        
+        await HistoryStorageService.saveDesignToHistory(updatedItem);
+        console.log('✅ [EnhancedStyleApi] Successfully updated existing design to completed');
+        
+      } else {
+        console.log('⚠️ [EnhancedStyleApi] No existing design found for sessionId:', renovationData.sessionId);
+        console.log('⚠️ [EnhancedStyleApi] This should not happen - every completion should have a generating entry');
+        
+        // Fallback: create new entry only if absolutely no existing design found
+        console.log('💾 [EnhancedStyleApi] Creating fallback completed design entry');
+        const fallbackItem = {
+          id: `${renovationData.sessionId}-${Date.now()}`,
+          sessionId: renovationData.sessionId,
+          createdAt: new Date().toISOString(),
+          thumbnail: `http://localhost:3001${renovationData.generatedImage.url}`,
+          originalImage: `http://localhost:3001${renovationData.originalImage.url}`,
+          generatedImage: `http://localhost:3001${renovationData.generatedImage.url}`,
+          status: 'completed' as const,
+          title: `Design ${renovationData.sessionId.slice(-6)}`, // Generic title as fallback
+          styleData: renovationData.styleData,
+          metadata: {
+            originalImageData: renovationData.originalImage,
+            generatedImageData: renovationData.generatedImage,
+            renovationData: renovationData
+          }
+        };
+        
+        await HistoryStorageService.saveDesignToHistory(fallbackItem);
+        console.log('✅ [EnhancedStyleApi] Successfully created fallback completed design');
+      }
     } catch (error) {
       console.error('❌ [EnhancedStyleApi] Error saving completed renovation:', error);
       // Don't throw - this is not critical to the main flow
