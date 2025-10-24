@@ -1,40 +1,38 @@
-# Resolve react_native_pods.rb with node to allow for hoisting
-require Pod::Executable.execute_command('node', ['-p',
-  'require.resolve(
-    "react-native/scripts/react_native_pods.rb",
-    {paths: [process.argv[1]]},
-  )', __dir__]).strip
+require_relative '../node_modules/react-native/scripts/react_native_pods'
+require_relative '../node_modules/@react-native-community/cli-platform-ios/native_modules'
 
 platform :ios, '15.1'
 prepare_react_native_project!
 
-linkage = ENV['USE_FRAMEWORKS']
-if linkage != nil
-  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
-  use_frameworks! :linkage => linkage.to_sym
-end
+# RN 0.74 wants frameworks; static linkage is recommended
+use_frameworks! :linkage => :static
 
 target 'upCrib' do
   config = use_native_modules!
 
   use_react_native!(
     :path => config[:reactNativePath],
-    # An absolute path to your application root.
+    :hermes_enabled => true,
+    :fabric_enabled => false,
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
   target 'upCribTests' do
     inherit! :complete
-    # Pods for testing
   end
+end
 
-  post_install do |installer|
-    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
-    react_native_post_install(
-      installer,
-      config[:reactNativePath],
-      :mac_catalyst_enabled => false,
-      # :ccache_enabled => true
-    )
+post_install do |installer|
+  # RN post install hooks
+  react_native_post_install(installer)
+
+  # Ensure all Pods produce dSYMs in Release (helps TestFlight symbol matching)
+  installer.pods_project.targets.each do |t|
+    t.build_configurations.each do |config|
+      if config.name == 'Release'
+        config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+        config.build_settings['GCC_GENERATE_DEBUGGING_SYMBOLS'] = 'YES'
+      end
+    end
   end
 end

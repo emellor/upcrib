@@ -69,7 +69,7 @@ export class MockAPIClient {
   private questionAnswers: Map<string, Record<string, string>> = new Map();
 
   get apiBaseURL(): string {
-    return 'http://localhost:3001';
+    return 'https://upcrib-backend.onrender.com';
   }
 
   async healthCheck(): Promise<HealthCheck> {

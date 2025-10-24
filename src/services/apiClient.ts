@@ -12,8 +12,8 @@ import {
 
 // API Configuration
 const API_CONFIG = {
-  baseURL: __DEV__ ? 'http://localhost:3001' : 'https://upcrib-backend.onrender.com',
-  // baseURL: 'https://upcrib-backend.onrender.com', // Force production URL for now
+  // baseURL: __DEV__ ? 'http://localhost:3001' : 'https://upcrib-backend.onrender.com',
+  baseURL: 'https://upcrib-backend.onrender.com', // Force production URL
   apiPath: '/api',
   timeout: 30000, // 30 seconds
   headers: {
