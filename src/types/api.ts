@@ -1,4 +1,4 @@
-// API Types for upCrib Backend Integration
+// API Types for HomeStyle AI Backend Integration
 
 export interface SessionData {
   sessionId: string;

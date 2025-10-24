@@ -105,7 +105,7 @@ export const usePolling = <T>(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<any>(null);
 
   const poll = useCallback(async (): Promise<void> => {
     try {

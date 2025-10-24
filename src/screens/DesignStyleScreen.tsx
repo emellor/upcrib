@@ -61,6 +61,14 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
   const [architecturalStyles, setArchitecturalStyles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingError, setLoadingError] = useState<string | null>(null);
+  
+  // Polling state for renovation status
+  const [isPolling, setIsPolling] = useState(false);
+  const [renovationStatus, setRenovationStatus] = useState<string>('');
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [isRenovationComplete, setIsRenovationComplete] = useState(false);
+  const [pollInterval, setPollInterval] = useState<any>(null);
 
   // Fallback styles in case API is unavailable
   const fallbackStyles = [
@@ -78,6 +86,86 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
   useEffect(() => {
     loadArchitecturalStyles();
   }, []);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [pollInterval]);
+
+  // Start polling after generation begins
+  const startPollingRenovationStatus = () => {
+    if (isPolling) return;
+    
+    console.log('🔄 Starting renovation status polling for session:', sessionId);
+    setIsPolling(true);
+    
+    const interval = setInterval(async () => {
+      try {
+        console.log('📊 Polling renovation status...');
+        const response = await fetch(`http://localhost:3001/api/enhanced-style-renovation/${sessionId}/status`);
+        const data = await response.json();
+        
+        console.log('🔄 POLLING RESPONSE:');
+        console.log('═'.repeat(60));
+        console.log('📍 Session ID:', sessionId);
+        console.log('📊 Status:', data.data?.status);
+        console.log('⏳ Has Pending Jobs:', data.data?.hasPendingJobs);
+        
+        if (data.data?.originalImage?.url) {
+          console.log('🖼️  Original Image URL:', data.data.originalImage.url);
+          console.log('   Full URL:', `http://localhost:3001${data.data.originalImage.url}`);
+        }
+        
+        if (data.data?.generatedImage?.url) {
+          console.log('🎨 Generated Image URL:', data.data.generatedImage.url);
+          console.log('   Full URL:', `http://localhost:3001${data.data.generatedImage.url}`);
+        }
+        
+        console.log('📋 FULL API RESPONSE:');
+        console.log(JSON.stringify(data, null, 2));
+        console.log('═'.repeat(60));
+        
+        if (data.success && data.data) {
+          setRenovationStatus(data.data.status);
+          
+          // Set image URLs if available
+          if (data.data.originalImage?.url) {
+            setOriginalImageUrl(`http://localhost:3001${data.data.originalImage.url}`);
+          }
+          
+          if (data.data.generatedImage?.url) {
+            setGeneratedImageUrl(`http://localhost:3001${data.data.generatedImage.url}`);
+          }
+          
+          // Stop polling when completed
+          if (data.data.status === 'completed') {
+            console.log('🎉 Renovation completed! Stopping polling...');
+            setIsRenovationComplete(true);
+            setIsPolling(false);
+            clearInterval(interval);
+            setPollInterval(null);
+            
+            // Stop background polling service as well
+            await backgroundPollingService.removeSession(sessionId);
+          } else if (data.data.status === 'failed') {
+            console.log('❌ Renovation failed! Stopping polling...');
+            setIsPolling(false);
+            clearInterval(interval);
+            setPollInterval(null);
+            await backgroundPollingService.removeSession(sessionId);
+          }
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    }, 3000); // Poll every 3 seconds
+    
+    setPollInterval(interval);
+  };
 
   const loadArchitecturalStyles = async () => {
     setLoading(true);
@@ -187,6 +275,9 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
       // 🔔 Start background polling and show notification
       console.log('🔔 Starting background polling for session:', sessionId);
       await backgroundPollingService.addSession(sessionId);
+      
+      // Start local polling as well for this screen
+      startPollingRenovationStatus();
       
       // Start the generation process in the background
       enhancedStyleRenovationApi.createAndWaitForCompletion(
@@ -300,52 +391,121 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
               </View>
             )}
             
-            {/* Style Grid */}
-            <View style={styles.styleGrid}>
-              {architecturalStyles.map(style => (
-                <TouchableOpacity
-                  key={style.id}
-                  style={[
-                    styles.styleCard,
-                    selectedStyle === style.id && styles.selectedStyle,
-                  ]}
-                  onPress={() => setSelectedStyle(style.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[
-                    styles.iconContainer,
-                    selectedStyle === style.id && styles.selectedIconContainer,
-                  ]}>
-                    {style.iconUri ? (
-                      <Image 
-                        source={{ uri: style.iconUri }}
-                        style={styles.styleIcon}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <Text style={styles.styleEmoji}>🏠</Text>
-                    )}
-                  </View>
-                  <Text style={[
-                    styles.styleText,
-                    selectedStyle === style.id && styles.selectedStyleText,
-                  ]}>
-                    {style.name}
+            {/* Renovation Status and Results */}
+            {isPolling && (
+              <View style={styles.renovationStatusContainer}>
+                <View style={styles.statusHeader}>
+                  <ActivityIndicator size="small" color={Theme.colors.primary} />
+                  <Text style={styles.statusTitle}>
+                    {renovationStatus === 'generating' ? 'Generating Your Renovation...' : 'Processing...'}
                   </Text>
-                  <Text style={[
-                    styles.styleDescription,
-                    selectedStyle === style.id && styles.selectedStyleDescription,
-                  ]}>
-                    {style.description}
-                  </Text>
-                  {selectedStyle === style.id && (
-                    <View style={styles.selectedBadge}>
-                      <Text style={styles.selectedBadgeText}>✓</Text>
+                </View>
+                <Text style={styles.statusSubtitle}>
+                  Status: {renovationStatus || 'checking...'}
+                </Text>
+              </View>
+            )}
+            
+            {/* Before & After Images */}
+            {isRenovationComplete && originalImageUrl && generatedImageUrl && (
+              <View style={styles.renovationResultsContainer}>
+                <Text style={styles.resultsTitle}>🎉 Your Renovation is Ready!</Text>
+                <Text style={styles.resultsSubtitle}>Drag the slider to compare before and after</Text>
+                
+                <View style={styles.beforeAfterContainer}>
+                  <Text style={styles.comparisonLabel}>Before & After</Text>
+                  
+                  <View style={styles.imageContainer}>
+                    <View style={styles.imageRow}>
+                      <View style={styles.imageSection}>
+                        <Text style={styles.imageLabel}>Before</Text>
+                        <Image
+                          source={{ uri: originalImageUrl }}
+                          style={styles.comparisonImage}
+                          resizeMode="cover"
+                          onLoad={() => console.log('🖼️  Original image loaded successfully')}
+                          onError={(error) => console.log('❌ Original image load error:', error.nativeEvent.error)}
+                        />
+                      </View>
+                      
+                      <View style={styles.imageSection}>
+                        <Text style={styles.imageLabel}>After</Text>
+                        <Image
+                          source={{ uri: generatedImageUrl }}
+                          style={styles.comparisonImage}
+                          resizeMode="cover"
+                          onLoad={() => console.log('🎨 Generated image loaded successfully')}
+                          onError={(error) => console.log('❌ Generated image load error:', error.nativeEvent.error)}
+                        />
+                      </View>
                     </View>
-                  )}
+                  </View>
+                </View>
+                
+                <TouchableOpacity
+                  style={styles.viewFullResultButton}
+                  onPress={() => navigation.navigate('Result', {
+                    sessionId,
+                    imageUrl: generatedImageUrl,
+                    originalImageUrl: originalImageUrl,
+                    answers: {}
+                  })}
+                >
+                  <Text style={styles.viewFullResultText}>View Full Result</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+              </View>
+            )}
+            
+            {/* Style Grid - only show if renovation not complete */}
+            {!isRenovationComplete && (
+              <View style={styles.styleGrid}>
+                {architecturalStyles.map(style => (
+                  <TouchableOpacity
+                    key={style.id}
+                    style={[
+                      styles.styleCard,
+                      selectedStyle === style.id && styles.selectedStyle,
+                      isPolling && styles.disabledStyle,
+                    ]}
+                    onPress={() => !isPolling && setSelectedStyle(style.id)}
+                    activeOpacity={isPolling ? 1 : 0.7}
+                    disabled={isPolling}
+                  >
+                    <View style={[
+                      styles.iconContainer,
+                      selectedStyle === style.id && styles.selectedIconContainer,
+                    ]}>
+                      {style.iconUri ? (
+                        <Image 
+                          source={{ uri: style.iconUri }}
+                          style={styles.styleIcon}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Text style={styles.styleEmoji}>🏠</Text>
+                      )}
+                    </View>
+                    <Text style={[
+                      styles.styleText,
+                      selectedStyle === style.id && styles.selectedStyleText,
+                    ]}>
+                      {style.name}
+                    </Text>
+                    <Text style={[
+                      styles.styleDescription,
+                      selectedStyle === style.id && styles.selectedStyleDescription,
+                    ]}>
+                      {style.description}
+                    </Text>
+                    {selectedStyle === style.id && (
+                      <View style={styles.selectedBadge}>
+                        <Text style={styles.selectedBadgeText}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </>
         )}
         </View>
@@ -386,16 +546,21 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         <TouchableOpacity
           style={[
             GlobalStyles.nextButton,
-            !selectedStyle && GlobalStyles.nextButtonDisabled
+            (!selectedStyle || isPolling) && GlobalStyles.nextButtonDisabled
           ]}
           onPress={handleGenerate}
-          disabled={!selectedStyle}
+          disabled={!selectedStyle || isPolling}
         >
           <Text style={[
             GlobalStyles.nextButtonText,
-            !selectedStyle && GlobalStyles.nextButtonTextDisabled
+            (!selectedStyle || isPolling) && GlobalStyles.nextButtonTextDisabled
           ]}>
-            {selectedStyle ? 'Generate Design' : 'Select a Style to Continue'}
+            {isPolling 
+              ? 'Generating...' 
+              : selectedStyle 
+                ? 'Generate Design' 
+                : 'Select a Style to Continue'
+            }
           </Text>
         </TouchableOpacity>
       </View>
@@ -571,6 +736,106 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     textAlign: 'center',
+  },
+  // Renovation status styles
+  renovationStatusContainer: {
+    backgroundColor: Theme.colors.accentLight,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: Theme.colors.primaryLight,
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statusTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Theme.colors.text,
+    marginLeft: 10,
+  },
+  statusSubtitle: {
+    fontSize: 14,
+    color: Theme.colors.textSecondary,
+  },
+  // Renovation results styles
+  renovationResultsContainer: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#10B981',
+  },
+  resultsTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Theme.colors.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  resultsSubtitle: {
+    fontSize: 14,
+    color: Theme.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  beforeAfterContainer: {
+    marginBottom: 20,
+  },
+  comparisonLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Theme.colors.text,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  imageContainer: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: Theme.colors.surface,
+  },
+  imageRow: {
+    flexDirection: 'row',
+  },
+  imageSection: {
+    flex: 1,
+    position: 'relative',
+  },
+  imageLabel: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    zIndex: 1,
+  },
+  comparisonImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: Theme.colors.backgroundSecondary,
+  },
+  viewFullResultButton: {
+    backgroundColor: Theme.colors.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  viewFullResultText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  disabledStyle: {
+    opacity: 0.6,
   },
 });
 

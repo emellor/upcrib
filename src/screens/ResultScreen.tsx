@@ -225,13 +225,48 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
 
   // Add polling for pending jobs using enhanced style renovation API
   useEffect(() => {
-    let pollInterval: NodeJS.Timeout | null = null;
+    let pollInterval: any = null;
     
     if (sessionData?.hasPendingJobs) {
       // Poll every 3 seconds while there are pending jobs using enhanced style renovation endpoint
       pollInterval = setInterval(async () => {
         try {
           const data = await apiClient.getEnhancedStyleRenovationStatus(sessionId);
+          
+          console.log('🔄 POLLING: Enhanced Style Renovation Status');
+          console.log('═'.repeat(60));
+          console.log('📍 Session ID:', sessionId);
+          console.log('📊 Status:', data.data?.status);
+          console.log('⏳ Has Pending Jobs:', data.data?.hasPendingJobs);
+          console.log('🎨 Style Data Available:', !!data.data?.styleData);
+          
+          // Log original image details
+          if (data.data?.originalImage) {
+            console.log('🖼️  ORIGINAL IMAGE (BEFORE):');
+            console.log('   URL:', data.data.originalImage.url);
+            console.log('   Filename:', data.data.originalImage.filename);
+            console.log('   Full URL:', `${apiClient.apiBaseURL}${data.data.originalImage.url}`);
+            if (data.data.originalImage.size) {
+              console.log('   Size:', (data.data.originalImage.size / 1024 / 1024).toFixed(2) + ' MB');
+            }
+          } else {
+            console.log('❌ ORIGINAL IMAGE: Not available (null/undefined)');
+          }
+          
+          // Log generated image details  
+          if (data.data?.generatedImage) {
+            console.log('🎨 GENERATED IMAGE (AFTER):');
+            console.log('   URL:', data.data.generatedImage.url);
+            console.log('   Filename:', data.data.generatedImage.filename);
+            console.log('   Full URL:', `${apiClient.apiBaseURL}${data.data.generatedImage.url}`);
+          } else {
+            console.log('❌ GENERATED IMAGE: Not available (null/undefined)');
+          }
+          
+          // Log full response payload for debugging
+          console.log('📋 FULL API RESPONSE PAYLOAD:');
+          console.log(JSON.stringify(data, null, 2));
+          console.log('═'.repeat(60));
           
           if (data.success) {
             // Store the Enhanced Style Renovation status
@@ -327,10 +362,24 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
   }, [sessionData]);
 
   const loadSessionData = async () => {
+    console.log('🚀 LOADING SESSION DATA - Renovation Ready Screen');
+    console.log('═'.repeat(60));
+    console.log('📍 Session ID:', sessionId);
+    console.log('📋 Route Params:');
+    console.log('   propImageUrl:', propImageUrl);
+    console.log('   originalImageUrl:', originalImageUrl);
+    console.log('   answers:', routeAnswers);
+    console.log('─'.repeat(60));
+    
     try {
       setLoading(true);
       setError(null);
       const data = await apiClient.getSessionState(sessionId);
+      console.log('📊 Basic Session Data Loaded:', {
+        status: data.status,
+        hasPendingJobs: data.hasPendingJobs,
+        hasQuestions: data.hasQuestions
+      });
       setSessionData(data);
       
       // Always try to get enhanced style renovation status to get proper image URLs
@@ -405,13 +454,13 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
     try {
       switch (method) {
         case 'sms':
-          const shareMessage = `Check out my AI-generated renovation design from upCrib! ${imageUrl}`;
+          const shareMessage = `Check out my AI-generated renovation design from HomeStyle AI! ${imageUrl}`;
           const smsUrl = `sms:?&body=${encodeURIComponent(shareMessage)}`;
           await Linking.openURL(smsUrl);
           break;
         case 'email':
-          const subject = 'My upCrib Renovation Design';
-          const body = `Check out my AI-generated renovation design!\n\nView the design here: ${imageUrl}\n\nGenerated with upCrib - AI-powered home renovation designs.`;
+          const subject = 'My HomeStyle AI Renovation Design';
+          const body = `Check out my AI-generated renovation design!\n\nView the design here: ${imageUrl}\n\nGenerated with HomeStyle AI - AI-powered home renovation designs.`;
           const emailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
           await Linking.openURL(emailUrl);
           break;
@@ -532,15 +581,25 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
   };
 
   const getImageUrl = () => {
-    console.log('Getting generated image URL...');
-    console.log('Enhanced Style Renovation Status:', enhancedStyleRenovationStatus);
+    console.log('🔍 GETTING GENERATED IMAGE URL (After Image)');
+    console.log('─'.repeat(40));
+    console.log('PropImageUrl from route:', propImageUrl);
+    console.log('SessionData available:', !!sessionData);
+    console.log('Enhanced Status available:', !!enhancedStyleRenovationStatus);
     
-    if (propImageUrl) return propImageUrl;
+    if (propImageUrl) {
+      console.log('✅ Using propImageUrl from route params');
+      console.log('   URL:', propImageUrl);
+      return propImageUrl;
+    }
     
     // 1. Try Enhanced Style Renovation status response first (BEST SOURCE)
     if (enhancedStyleRenovationStatus?.generatedImage?.url) {
       const url = `${apiClient.apiBaseURL}${enhancedStyleRenovationStatus.generatedImage.url}`;
-      console.log('✅ Using generatedImage URL from Enhanced Style Renovation status:', url);
+      console.log('✅ Using generatedImage URL from Enhanced Style Renovation status');
+      console.log('   Relative URL:', enhancedStyleRenovationStatus.generatedImage.url);
+      console.log('   Full URL:', url);
+      console.log('   Filename:', enhancedStyleRenovationStatus.generatedImage.filename);
       return url;
     }
     
@@ -560,51 +619,51 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
       }
       // Fallback to generated folder for old format
       const url = `${apiClient.apiBaseURL}/generated/${sessionData.generatedImage.filename}`;
-      console.log('Using generated image URL (old format):', url);
+      console.log('⚠️  Using generated image URL (old format fallback)');
+      console.log('   URL:', url);
       return url;
     }
-    console.log('❌ No generated image URL available');
+    console.log('❌ No generated image URL available - all methods failed');
+    console.log('─'.repeat(40));
     return null;
   };
 
   const getOriginalImageUrl = () => {
-    console.log('Getting original image URL...');
-    console.log('SessionData:', sessionData);
-    console.log('Enhanced Style Renovation Status:', enhancedStyleRenovationStatus);
+    console.log('🔍 GETTING ORIGINAL IMAGE URL (Before Image)');
+    console.log('─'.repeat(40));
+    console.log('SessionData available:', !!sessionData);
+    console.log('Enhanced Status available:', !!enhancedStyleRenovationStatus);
     
     // Try multiple approaches to find the correct original image URL
     
     // 1. Use the originalImage from Enhanced Style Renovation status (BEST SOURCE)
     if (enhancedStyleRenovationStatus?.originalImage?.url) {
       const url = `${apiClient.apiBaseURL}${enhancedStyleRenovationStatus.originalImage.url}`;
-      console.log('✅ Using originalImage URL from Enhanced Style Renovation status:', url);
+      console.log('✅ Using originalImage URL from Enhanced Style Renovation status');
+      console.log('   Relative URL:', enhancedStyleRenovationStatus.originalImage.url);
+      console.log('   Full URL:', url);
+      console.log('   Filename:', enhancedStyleRenovationStatus.originalImage.filename);
       return url;
     }
     
     // 2. Use the imageUrl field from session data which should contain the correct uploaded image URL
     if (sessionData?.imageUrl) {
       const url = `${apiClient.apiBaseURL}${sessionData.imageUrl}`;
-      console.log('Trying imageUrl from session data:', url);
+      console.log('⚠️  Using imageUrl from session data (fallback)');
+      console.log('   Relative URL:', sessionData.imageUrl);
+      console.log('   Full URL:', url);
       return url;
     }
     
-    // 3. Try sessionData.imageUrl if sessionData is available
-    if (sessionData?.imageUrl) {
-      const url = `${apiClient.apiBaseURL}${sessionData.imageUrl}`;
-      console.log('Trying imageUrl from sessionData:', url);
-      return url;
-    }
-    
-    // 4. Try to construct URL from the original route parameter if it contains useful info
+    // 3. Try to construct URL from the original route parameter if it contains useful info
     if (originalImageUrl && !originalImageUrl.startsWith('file://')) {
-      console.log('Using originalImageUrl from route:', originalImageUrl);
+      console.log('⚠️  Using originalImageUrl from route (fallback)');
+      console.log('   URL:', originalImageUrl);
       return originalImageUrl;
     }
     
-    // Don't use sessionData.image.filename as fallback - it's often just the original name
-    // and doesn't match the actual uploaded file path on the server
-    
     console.log('❌ No original image URL available - all methods failed');
+    console.log('─'.repeat(40));
     return null;
   };
 
@@ -719,8 +778,16 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
                           }} 
                           style={styles.sliderImage}
                           resizeMode="cover"
-                          onLoad={() => console.log('After image loaded:', getImageUrl())}
-                          onError={(error) => console.log('After image error:', error.nativeEvent.error)}
+                          onLoad={() => {
+                            console.log('🎨 AFTER IMAGE LOADED SUCCESSFULLY');
+                            console.log('   URL:', getImageUrl());
+                            console.log('   Source: Enhanced Style Renovation Generated Image');
+                          }}
+                          onError={(error) => {
+                            console.log('❌ AFTER IMAGE LOAD ERROR');
+                            console.log('   URL:', getImageUrl());
+                            console.log('   Error:', error.nativeEvent.error);
+                          }}
                         />
                       ) : (
                         <View style={styles.sliderPlaceholder}>
@@ -752,13 +819,16 @@ const ResultScreen: React.FC<Props> = ({ navigation, route, onClose }) => {
                           style={styles.sliderImage}
                           resizeMode="cover"
                           onLoad={() => {
-                            console.log('Before image loaded successfully:', getOriginalImageUrl());
+                            console.log('🖼️  BEFORE IMAGE LOADED SUCCESSFULLY');
+                            console.log('   URL:', getOriginalImageUrl());
+                            console.log('   Source: Enhanced Style Renovation Original Image');
                             setOriginalImageError(false);
                           }}
                           onError={(error) => {
-                            console.log('Before image error:', error.nativeEvent.error);
-                            console.log('Failed URL:', getOriginalImageUrl());
-                            console.log('Setting originalImageError to true - will show placeholder');
+                            console.log('❌ BEFORE IMAGE LOAD ERROR');
+                            console.log('   URL:', getOriginalImageUrl());
+                            console.log('   Error:', error.nativeEvent.error);
+                            console.log('   Setting originalImageError to true - will show placeholder');
                             setOriginalImageError(true);
                           }}
                         />

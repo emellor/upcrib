@@ -13,7 +13,7 @@ interface PollingSession {
 }
 
 class BackgroundPollingService {
-  private pollingIntervals: Map<string, NodeJS.Timeout> = new Map();
+  private pollingIntervals: Map<string, any> = new Map();
   private isInitialized = false;
 
   /**

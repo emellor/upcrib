@@ -1,4 +1,4 @@
-const ENHANCED_STYLE_API_BASE = 'https://upcrib-backend.onrender.com/api/enhanced-style-renovation';
+const ENHANCED_STYLE_API_BASE = __DEV__ ? 'http://localhost:3001/api/enhanced-style-renovation' : 'https://upcrib-backend.onrender.com/api/enhanced-style-renovation';
 
 export interface ArchitecturalStyle {
   id: string;
@@ -44,6 +44,14 @@ export interface RenovationStatusResponse {
     sessionId: string;
     status: 'uploading' | 'uploaded' | 'generating' | 'completed' | 'failed';
     hasPendingJobs: boolean;
+    originalImage?: {
+      path: string;
+      filename: string;
+      mimetype?: string;
+      size?: number;
+      uploadedAt?: string;
+      url: string;
+    };
     generatedImage?: {
       path: string;
       filename: string;
@@ -230,7 +238,8 @@ class EnhancedStyleRenovationApi {
     }
     
     // Construct full image URL
-    const imageUrl = `https://upcrib-backend.onrender.com${completedStatus.data.generatedImage.url}`;
+    const baseUrl = __DEV__ ? 'http://localhost:3001' : 'https://upcrib-backend.onrender.com';
+    const imageUrl = `${baseUrl}${completedStatus.data.generatedImage.url}`;
     
     return {
       sessionId,

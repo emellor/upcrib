@@ -69,7 +69,7 @@ export class MockAPIClient {
   private questionAnswers: Map<string, Record<string, string>> = new Map();
 
   get apiBaseURL(): string {
-    return 'https://upcrib-backend.onrender.com';
+    return __DEV__ ? 'http://localhost:3001' : 'https://upcrib-backend.onrender.com';
   }
 
   async healthCheck(): Promise<HealthCheck> {
@@ -150,7 +150,7 @@ export class MockAPIClient {
     }
 
     // Simulate some delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise<void>(resolve => setTimeout(resolve, 2000));
 
     return {
       jobId: `mock-analyze-job-${Date.now()}`,
