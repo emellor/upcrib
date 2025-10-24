@@ -408,10 +408,25 @@ export class UpCribAPIClient {
       };
     };
   }> {
-    const response = await fetch(`${this.baseURL}${this.apiPath}/enhanced-style-renovation/${sessionId}/status`);
+    const statusUrl = `${this.baseURL}${this.apiPath}/enhanced-style-renovation/${sessionId}/status`;
+    console.log('🔄 [ApiClient] Getting enhanced style renovation status from:', statusUrl);
+    
+    const response = await fetch(statusUrl);
+    console.log('📡 [ApiClient] Enhanced status response:', response.status, response.statusText);
+    console.log('📡 [ApiClient] Enhanced status headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+    
     const data = await response.json();
+    console.log('📋 [ApiClient] Enhanced status full response:', JSON.stringify(data, null, 2));
+    console.log('🖼️ [ApiClient] Enhanced status image URLs:', {
+      originalImageUrl: data.data?.originalImage?.url || 'NOT_FOUND',
+      originalImagePath: data.data?.originalImage?.path || 'NOT_FOUND', 
+      generatedImageUrl: data.data?.generatedImage?.url || 'NOT_FOUND',
+      status: data.data?.status,
+      dataKeys: Object.keys(data.data || {})
+    });
     
     if (!response.ok) {
+      console.error('❌ [ApiClient] Enhanced status error:', data.error);
       throw new Error(data.error?.message || 'Failed to get status');
     }
     

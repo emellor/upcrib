@@ -107,7 +107,7 @@ class EnhancedStyleRenovationApi {
   // Step 3: Create enhanced style renovation
   async createRenovation(request: EnhancedStyleRenovationRequest): Promise<EnhancedStyleRenovationResponse> {
     try {
-      console.log('Creating enhanced style renovation with:', request);
+      console.log('🚀 [EnhancedStyleApi] Creating enhanced style renovation with:', JSON.stringify(request, null, 2));
       
       const formData = new FormData();
       
@@ -117,6 +117,7 @@ class EnhancedStyleRenovationApi {
         type: 'image/jpeg',
         name: 'house.jpg',
       } as any);
+      console.log('📸 [EnhancedStyleApi] Added house image:', request.houseImageUri);
       
       // Add reference image if provided
       if (request.referenceImageUri) {
@@ -125,33 +126,43 @@ class EnhancedStyleRenovationApi {
           type: 'image/jpeg',
           name: 'reference.jpg',
         } as any);
+        console.log('📸 [EnhancedStyleApi] Added reference image:', request.referenceImageUri);
       }
       
       // Add style configuration (choose one)
       if (request.architecturalStyle) {
         formData.append('architecturalStyle', request.architecturalStyle);
+        console.log('🏗️ [EnhancedStyleApi] Added architectural style:', request.architecturalStyle);
       } else if (request.customStyleDescription) {
         formData.append('customStyleDescription', request.customStyleDescription);
+        console.log('🏗️ [EnhancedStyleApi] Added custom style description:', request.customStyleDescription);
       }
       
       // Add color configuration (choose one)
       if (request.colorPalette) {
         formData.append('colorPalette', request.colorPalette);
+        console.log('🎨 [EnhancedStyleApi] Added color palette:', request.colorPalette);
       } else if (request.customColors) {
         formData.append('customColors', JSON.stringify(request.customColors));
+        console.log('🎨 [EnhancedStyleApi] Added custom colors:', request.customColors);
       }
       
-      console.log('API Request: POST', this.baseUrl);
+      console.log('📡 [EnhancedStyleApi] API Request: POST', this.baseUrl);
       
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         body: formData,
       });
       
+      console.log('📡 [EnhancedStyleApi] API Response:', response.status, response.statusText);
+      console.log('📡 [EnhancedStyleApi] Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+      
       const data = await response.json();
-      console.log('API Response:', response.status, JSON.stringify(data));
+      console.log('📋 [EnhancedStyleApi] Full response data:', JSON.stringify(data, null, 2));
+      console.log('🆔 [EnhancedStyleApi] Session ID created:', data.data?.sessionId);
       
       if (!data.success) {
+        console.error('❌ [EnhancedStyleApi] Create renovation failed:', data.error);
         throw new Error(data.error?.message || 'Failed to create renovation');
       }
       
@@ -165,16 +176,35 @@ class EnhancedStyleRenovationApi {
   // Step 4: Get renovation status
   async getRenovationStatus(sessionId: string): Promise<RenovationStatusResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/${sessionId}/status`);
+      const statusUrl = `${this.baseUrl}/${sessionId}/status`;
+      console.log('🔄 [EnhancedStyleApi] Getting renovation status from:', statusUrl);
+      
+      const response = await fetch(statusUrl);
+      console.log('📡 [EnhancedStyleApi] Status response:', response.status, response.statusText);
+      
       const data = await response.json();
+      console.log('📋 [EnhancedStyleApi] Status full response:', JSON.stringify(data, null, 2));
+      console.log('🖼️ [EnhancedStyleApi] Original image data:', {
+        hasOriginalImage: !!data.data?.originalImage,
+        originalImageUrl: data.data?.originalImage?.url,
+        originalImagePath: data.data?.originalImage?.path,
+        dataKeys: Object.keys(data.data || {})
+      });
       
       if (!data.success) {
+        console.error('❌ [EnhancedStyleApi] API returned error:', data.error);
         throw new Error(data.error?.message || 'Failed to get renovation status');
+      }
+      
+      // Save completed renovation to local storage
+      if (data.data?.status === 'completed' && data.data?.originalImage && data.data?.generatedImage) {
+        console.log('💾 [EnhancedStyleApi] Saving completed renovation to local storage');
+        await this.saveCompletedRenovation(data.data);
       }
       
       return data;
     } catch (error) {
-      console.error('Error getting renovation status:', error);
+      console.error('❌ [EnhancedStyleApi] Error getting renovation status:', error);
       throw error;
     }
   }
@@ -245,6 +275,38 @@ class EnhancedStyleRenovationApi {
       sessionId,
       imageUrl
     };
+  }
+
+  // Save completed renovation to local storage
+  async saveCompletedRenovation(renovationData: any): Promise<void> {
+    try {
+      const { HistoryStorageService } = require('./historyStorage');
+      
+      // Create a design history item from the renovation data
+      const historyItem = {
+        id: `${renovationData.sessionId}-${Date.now()}`,
+        sessionId: renovationData.sessionId,
+        createdAt: renovationData.generatedImage?.generatedAt || new Date().toISOString(),
+        thumbnail: `http://localhost:3001${renovationData.generatedImage.url}`,
+        originalImage: `http://localhost:3001${renovationData.originalImage.url}`,
+        generatedImage: `http://localhost:3001${renovationData.generatedImage.url}`,
+        status: 'completed' as const,
+        title: `${renovationData.styleData.architecturalStyle.charAt(0).toUpperCase() + renovationData.styleData.architecturalStyle.slice(1)} Design`,
+        styleData: renovationData.styleData,
+        metadata: {
+          originalImageData: renovationData.originalImage,
+          generatedImageData: renovationData.generatedImage,
+          renovationData: renovationData // Store complete renovation data for modal
+        }
+      };
+      
+      console.log('💾 [EnhancedStyleApi] Saving design to history:', historyItem);
+      await HistoryStorageService.saveDesignToHistory(historyItem);
+      console.log('✅ [EnhancedStyleApi] Successfully saved completed renovation to history');
+    } catch (error) {
+      console.error('❌ [EnhancedStyleApi] Error saving completed renovation:', error);
+      // Don't throw - this is not critical to the main flow
+    }
   }
 }
 

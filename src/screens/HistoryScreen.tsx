@@ -13,6 +13,8 @@ import {
   Alert,
   Modal,
   TextInput,
+  Animated,
+  PanResponder,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';

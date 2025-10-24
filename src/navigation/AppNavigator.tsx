@@ -19,9 +19,9 @@ export type RootStackParamList = {
   Home: undefined;
   Upload: { sessionId: string };
   ColorPalette: { sessionId: string; imageUri?: string };
-  EnvironmentThemes: { sessionId: string; selectedColors: number[]; imageUri?: string };
-  InspirationPhoto: { sessionId: string; selectedColors: number[]; selectedThemes: number[]; imageUri?: string };
-  DesignStyle: { sessionId: string; selectedColors: number[]; selectedThemes: number[]; hasInspirationPhoto: boolean; imageUri?: string };
+  EnvironmentThemes: { sessionId: string; selectedColors: string[]; imageUri?: string };
+  InspirationPhoto: { sessionId: string; selectedColors: string[]; selectedThemes: number[]; imageUri?: string };
+  DesignStyle: { sessionId: string; selectedColors: string[]; selectedThemes: number[]; hasInspirationPhoto: boolean; imageUri?: string };
   ExteriorOptions: { sessionId: string; imageUri?: string };
   Style: { sessionId: string; imageUrl?: string };
   Design: { sessionId: string; answers?: { [questionId: string]: string }; imageUrl?: string };

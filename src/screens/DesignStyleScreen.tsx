@@ -105,9 +105,14 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
     
     const interval = setInterval(async () => {
       try {
-        console.log('📊 Polling renovation status...');
-        const response = await fetch(`http://localhost:3001/api/enhanced-style-renovation/${sessionId}/status`);
+        const statusUrl = `http://localhost:3001/api/enhanced-style-renovation/${sessionId}/status`;
+        console.log('� [DesignStyleScreen] Polling status from:', statusUrl);
+        
+        const response = await fetch(statusUrl);
+        console.log('📡 [DesignStyleScreen] Polling response:', response.status, response.statusText);
+        
         const data = await response.json();
+        console.log('📋 [DesignStyleScreen] Polling full response:', JSON.stringify(data, null, 2));
         
         console.log('🔄 POLLING RESPONSE:');
         console.log('═'.repeat(60));
@@ -172,15 +177,21 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
     setLoadingError(null);
     
     try {
-      console.log('Fetching architectural styles from API...');
-      const styles = await enhancedStyleRenovationApi.getArchitecturalStyles();
+      const stylesUrl = 'http://localhost:3001/api/enhanced-style-renovation/styles';
+      console.log('🎨 [DesignStyleScreen] Fetching architectural styles from:', stylesUrl);
       
-      if (Array.isArray(styles) && styles.length > 0) {
-        console.log('Successfully loaded styles from API:', styles);
-        setArchitecturalStyles(styles);
+      const response = await fetch(stylesUrl);
+      console.log('📡 [DesignStyleScreen] Styles response:', response.status, response.statusText);
+      
+      const data = await response.json();
+      console.log('📋 [DesignStyleScreen] Styles full response:', JSON.stringify(data, null, 2));
+      
+      if (data.success && Array.isArray(data.data.styles) && data.data.styles.length > 0) {
+        console.log('Successfully loaded styles from API:', data.data.styles);
+        setArchitecturalStyles(data.data.styles);
         // Set default selection to first available style
-        if (!selectedStyle && styles[0]) {
-          setSelectedStyle(styles[0].id);
+        if (!selectedStyle && data.data.styles[0]) {
+          setSelectedStyle(data.data.styles[0].id);
         }
       } else {
         console.log('API returned empty styles array, using fallback');
@@ -210,32 +221,22 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         return;
       }
       
-      // Map selected colors number back to palette ID
-      let selectedColorPalette = 'classic-neutral'; // Default fallback
+      // Use selectedColors directly as palette IDs from the new API
+      let selectedColorPalette = 'heritage-red'; // Default fallback
       
       if (selectedColors && selectedColors.length > 0) {
-        const numberToPaletteId: { [key: number]: string } = {
-          0: 'classic-neutral', // surprise-me falls back to classic-neutral
-          1: 'classic-neutral',
-          2: 'coastal-blue',
-          3: 'heritage-red',
-          4: 'forest-green',
-          5: 'modern-monochrome',
-          6: 'warm-terracotta',
-          7: 'cottage-pastels',
-          8: 'alpine-naturals'
-        };
-        selectedColorPalette = numberToPaletteId[selectedColors[0]] || 'classic-neutral';
+        // selectedColors now contains the actual palette IDs from the API
+        selectedColorPalette = selectedColors[0];
       }
       
       console.log('Creating enhanced style renovation with:', {
         imageUri,
         selectedStyle,
-        selectedColorPalette
+        selectedColorPalette,
+        hasInspirationPhoto
       });
       
       // Copy the temp file to a permanent location BEFORE creating history
-      // This prevents the "file doesn't exist" error when the temp file is deleted
       let permanentImageUri = imageUri;
       if (imageUri.startsWith('file://')) {
         try {
@@ -248,7 +249,6 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
           console.log('File copied successfully to:', permanentImageUri);
         } catch (copyError) {
           console.warn('Failed to copy temp file, using original URI:', copyError);
-          // Continue with original URI if copy fails
         }
       }
       
@@ -260,8 +260,8 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         id: `${sessionId}-${Date.now()}`,
         sessionId: sessionId,
         createdAt: new Date().toISOString(),
-        thumbnail: permanentImageUri, // Use permanent path
-        originalImage: permanentImageUri, // Use permanent path
+        thumbnail: permanentImageUri,
+        originalImage: permanentImageUri,
         status: 'generating',
         title: `${selectedStyleName} Design`,
       };
@@ -279,13 +279,20 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
       // Start local polling as well for this screen
       startPollingRenovationStatus();
       
-      // Start the generation process in the background
+      // Create the renovation request object
+      const renovationRequest = {
+        houseImageUri: permanentImageUri,
+        architecturalStyle: selectedStyle,
+        colorPalette: selectedColorPalette,
+        // Include reference image if hasInspirationPhoto is true
+        ...(hasInspirationPhoto && { referenceImageUri: permanentImageUri })
+      };
+      
+      console.log('Enhanced Style Renovation Request:', renovationRequest);
+      
+      // Start the generation process using the new API structure
       enhancedStyleRenovationApi.createAndWaitForCompletion(
-        {
-          houseImageUri: permanentImageUri, // Use permanent path for API call
-          architecturalStyle: selectedStyle,
-          colorPalette: selectedColorPalette
-        },
+        renovationRequest,
         (status) => {
           console.log('Generation status:', status);
         }
@@ -296,7 +303,6 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         console.log('🔔 Generation complete, stopping polling and showing notification');
         await backgroundPollingService.removeSession(sessionId);
         
-        // Import notificationService at the top of the file
         const notificationService = require('../services/notificationService').default;
         await notificationService.notifyGenerationComplete(sessionId);
         
@@ -304,7 +310,7 @@ const DesignStyleScreen: React.FC<DesignStyleScreenProps> = ({
         const updatedItem: DesignHistoryItem = {
           ...historyItem,
           status: 'completed',
-          thumbnail: result.imageUrl, // Use generated image as thumbnail
+          thumbnail: result.imageUrl,
         };
         
         await HistoryStorageService.saveDesignToHistory(updatedItem);

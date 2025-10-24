@@ -15,6 +15,8 @@ interface PollingSession {
 class BackgroundPollingService {
   private pollingIntervals: Map<string, any> = new Map();
   private isInitialized = false;
+  private inMemorySessions: PollingSession[] = []; // Fallback for when AsyncStorage fails
+  private useAsyncStorage = true; // Flag to track if AsyncStorage is working
 
   /**
    * Initialize the service and restore any pending sessions
@@ -24,6 +26,17 @@ class BackgroundPollingService {
     
     try {
       console.log('🚀 [BackgroundPolling] Initializing service...');
+      
+      // Test AsyncStorage availability
+      try {
+        await AsyncStorage.setItem('@init_test', 'initialized');
+        await AsyncStorage.removeItem('@init_test');
+        console.log('✅ [BackgroundPolling] AsyncStorage is available');
+        this.useAsyncStorage = true;
+      } catch (storageError) {
+        console.warn('⚠️ [BackgroundPolling] AsyncStorage unavailable, using in-memory mode:', storageError);
+        this.useAsyncStorage = false;
+      }
       
       // Initialize notification service
       await notificationService.initialize();
@@ -35,30 +48,51 @@ class BackgroundPollingService {
       console.log('✅ [BackgroundPolling] Service initialized successfully');
     } catch (error) {
       console.error('❌ [BackgroundPolling] Error initializing:', error);
+      // Mark as initialized anyway to prevent infinite retry loops
+      this.isInitialized = true;
     }
   }
 
   /**
-   * Get all polling sessions
+   * Get all polling sessions with fallback to in-memory storage
    */
   private async getPollingSessions(): Promise<PollingSession[]> {
+    if (!this.useAsyncStorage) {
+      console.log('📝 [BackgroundPolling] Using in-memory sessions (AsyncStorage disabled)');
+      return [...this.inMemorySessions];
+    }
+
     try {
       const data = await AsyncStorage.getItem(POLLING_SESSIONS_KEY);
-      return data ? JSON.parse(data) : [];
+      const sessions = data ? JSON.parse(data) : [];
+      console.log('📝 [BackgroundPolling] Loaded sessions from AsyncStorage:', sessions.length);
+      return sessions;
     } catch (error) {
-      console.error('Error getting polling sessions:', error);
-      return [];
+      console.warn('⚠️ [BackgroundPolling] AsyncStorage failed, switching to in-memory mode:', error);
+      this.useAsyncStorage = false;
+      return [...this.inMemorySessions];
     }
   }
 
   /**
-   * Save polling sessions
+   * Save polling sessions with fallback to in-memory storage
    */
   private async savePollingSessions(sessions: PollingSession[]): Promise<void> {
+    // Always update in-memory backup
+    this.inMemorySessions = [...sessions];
+    
+    if (!this.useAsyncStorage) {
+      console.log('📝 [BackgroundPolling] Saved to in-memory storage (AsyncStorage disabled)');
+      return;
+    }
+
     try {
       await AsyncStorage.setItem(POLLING_SESSIONS_KEY, JSON.stringify(sessions));
+      console.log('📝 [BackgroundPolling] Saved sessions to AsyncStorage:', sessions.length);
     } catch (error) {
-      console.error('Error saving polling sessions:', error);
+      console.warn('⚠️ [BackgroundPolling] AsyncStorage save failed, switching to in-memory mode:', error);
+      this.useAsyncStorage = false;
+      // Data is already saved to inMemorySessions above
     }
   }
 
@@ -68,50 +102,71 @@ class BackgroundPollingService {
   async addSession(sessionId: string): Promise<void> {
     console.log(`➕ [BackgroundPolling] Adding session: ${sessionId}`);
     
-    const sessions = await this.getPollingSessions();
-    
-    // Check if session already exists
-    const existingIndex = sessions.findIndex(s => s.sessionId === sessionId);
-    if (existingIndex >= 0) {
-      console.log(`⚠️ [BackgroundPolling] Session ${sessionId} already exists, skipping`);
-      return; // Already polling this session
-    }
+    try {
+      const sessions = await this.getPollingSessions();
+      
+      // Check if session already exists
+      const existingIndex = sessions.findIndex(s => s.sessionId === sessionId);
+      if (existingIndex >= 0) {
+        console.log(`⚠️ [BackgroundPolling] Session ${sessionId} already exists, skipping`);
+        return; // Already polling this session
+      }
 
-    // Add new session
-    sessions.push({
-      sessionId,
-      startedAt: Date.now(),
-      notificationShown: false,
-    });
-    
-    await this.savePollingSessions(sessions);
-    
-    // Start polling
-    await this.startPolling(sessionId);
-    
-    // Show notification that generation has started
-    await notificationService.notifyGenerationStarted(sessionId);
-    
-    console.log(`✅ [BackgroundPolling] Started polling for session: ${sessionId}`);
+      // Add new session
+      const newSession: PollingSession = {
+        sessionId,
+        startedAt: Date.now(),
+        notificationShown: false,
+      };
+      
+      sessions.push(newSession);
+      
+      // Save sessions (will use AsyncStorage or in-memory as fallback)
+      await this.savePollingSessions(sessions);
+      
+      // Start polling
+      await this.startPolling(sessionId);
+      
+      // Show notification that generation has started
+      try {
+        await notificationService.notifyGenerationStarted(sessionId);
+      } catch (notifError) {
+        console.warn('⚠️ [BackgroundPolling] Failed to show start notification:', notifError);
+      }
+      
+      console.log(`✅ [BackgroundPolling] Started polling for session: ${sessionId}`);
+    } catch (error) {
+      console.error('❌ [BackgroundPolling] Error adding session:', error);
+      // This should not happen with the new storage system, but add fallback
+      await this.startPolling(sessionId);
+    }
   }
 
   /**
    * Remove a session from polling
    */
   async removeSession(sessionId: string): Promise<void> {
-    // Stop polling interval
+    console.log(`➖ [BackgroundPolling] Removing session: ${sessionId}`);
+    
+    // Stop polling interval first (this is most important)
     const interval = this.pollingIntervals.get(sessionId);
     if (interval) {
       clearInterval(interval);
       this.pollingIntervals.delete(sessionId);
+      console.log(`✅ [BackgroundPolling] Stopped polling interval for session: ${sessionId}`);
     }
 
-    // Remove from storage
-    const sessions = await this.getPollingSessions();
-    const filtered = sessions.filter(s => s.sessionId !== sessionId);
-    await this.savePollingSessions(filtered);
-    
-    console.log(`Stopped polling for session: ${sessionId}`);
+    // Remove from both storage systems
+    try {
+      const sessions = await this.getPollingSessions();
+      const filtered = sessions.filter(s => s.sessionId !== sessionId);
+      await this.savePollingSessions(filtered);
+      console.log(`✅ [BackgroundPolling] Removed session ${sessionId} from storage`);
+    } catch (error) {
+      console.warn(`⚠️ [BackgroundPolling] Failed to remove session ${sessionId} from storage:`, error);
+      // Still remove from in-memory storage as fallback
+      this.inMemorySessions = this.inMemorySessions.filter(s => s.sessionId !== sessionId);
+    }
   }
 
   /**

@@ -37,7 +37,7 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
   route,
 }) => {
   const { sessionId, imageUri } = route.params;
-  const [selectedPaletteId, setSelectedPaletteId] = useState<string | null>('surprise-me');
+  const [selectedPaletteId, setSelectedPaletteId] = useState<string | null>(null);
   const [colorPalettes, setColorPalettes] = useState<ColorPalette[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,12 +45,32 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
     setSelectedPaletteId(selectedPaletteId === paletteId ? null : paletteId);
   };
 
-  // Load color palettes from API
+  // Load color palettes from new API endpoint
   useEffect(() => {
     const loadColorPalettes = async () => {
       try {
         setLoading(true);
-        const palettes = await enhancedStyleRenovationApi.getColorPalettes();
+        console.log('Loading color palettes from API...');
+        
+        // Use direct API call instead of service wrapper
+        const palettesUrl = 'http://localhost:3001/api/enhanced-style-renovation/color-palettes';
+        console.log('🎨 [ColorPaletteScreen] Loading color palettes from:', palettesUrl);
+        
+        const response = await fetch(palettesUrl);
+        console.log('📡 [ColorPaletteScreen] Palettes API response status:', response.status, response.statusText);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ [ColorPaletteScreen] Palettes API error:', errorText);
+          throw new Error(`Failed to fetch color palettes: ${response.status}`);
+        }
+        
+        const apiResponse = await response.json();
+        console.log('📋 [ColorPaletteScreen] Palettes API full response:', JSON.stringify(apiResponse, null, 2));
+        
+        // Extract palettes from the API response structure
+        const palettes: ColorPalette[] = apiResponse.data?.palettes || [];
+        console.log('Extracted palettes:', palettes);
         
         // Add a "Surprise Me" option at the beginning
         const surpriseMeOption: ColorPalette = {
@@ -62,9 +82,10 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
         
         // Ensure palettes is an array before spreading
         const paletteArray = Array.isArray(palettes) ? palettes : [];
+        console.log('Final palette array:', [surpriseMeOption, ...paletteArray]);
         setColorPalettes([surpriseMeOption, ...paletteArray]);
       } catch (error) {
-        console.error('Failed to load color palettes:', error);
+        console.error('Failed to load color palettes from API, using fallback:', error);
         
         // Fallback to hardcoded palettes that match backend API
         const fallbackPalettes: ColorPalette[] = [
@@ -136,22 +157,11 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
   const handleNext = () => {
     const selectedPalette = selectedPaletteId ? colorPalettes.find(p => p.id === selectedPaletteId) : null;
     
-    // Map palette IDs to numbers for navigation
-    const paletteIdToNumber: { [key: string]: number } = {
-      'surprise-me': 0,
-      'classic-neutral': 1,
-      'coastal-blue': 2,
-      'heritage-red': 3,
-      'forest-green': 4,
-      'modern-monochrome': 5,
-      'warm-terracotta': 6,
-      'cottage-pastels': 7,
-      'alpine-naturals': 8
-    };
+    console.log('Navigating with selected palette:', selectedPalette);
     
     navigation.navigate('InspirationPhoto', { 
       sessionId,
-      selectedColors: selectedPalette ? [paletteIdToNumber[selectedPalette.id] || 1] : [],
+      selectedColors: selectedPalette ? [selectedPalette.id] : [],
       selectedThemes: [],
       imageUri
     });
@@ -251,16 +261,7 @@ const ColorPaletteScreen: React.FC<ColorPaletteScreenProps> = ({
         </View>
         )}
 
-        {selectedPaletteId && (
-          <View style={GlobalStyles.infoContainer}>
-            <Text style={GlobalStyles.infoTitle}>
-              {colorPalettes.find(p => p.id === selectedPaletteId)?.name} selected
-            </Text>
-            <Text style={GlobalStyles.infoText}>
-              {colorPalettes.find(p => p.id === selectedPaletteId)?.description}
-            </Text>
-          </View>
-        )}
+
         </View>
       </ScrollView>
 

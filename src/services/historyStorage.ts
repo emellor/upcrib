@@ -5,12 +5,26 @@ export interface DesignHistoryItem {
   id: string;
   sessionId: string;
   createdAt: string;
-  thumbnail: string; // URL for the generated image
-  originalImage?: string; // URL for the original image
+  thumbnail: string;
+  originalImage?: string;
+  generatedImage?: string;
+  localThumbnailPath?: string; // Keep existing property for backward compatibility
+  localOriginalPath?: string; // Keep existing property for backward compatibility
   status: 'generating' | 'completed' | 'failed';
-  title?: string; // User-defined or generated title
-  localThumbnailPath?: string; // Local file path for thumbnail
-  localOriginalPath?: string; // Local file path for original image
+  title: string;
+  styleData?: {
+    architecturalStyle: string;
+    colorPalette: string;
+    customColors?: string[] | null;
+    colors: string[];
+    referenceImagePath?: string | null;
+    referenceImageOriginalName?: string | null;
+  };
+  metadata?: {
+    originalImageData?: any;
+    generatedImageData?: any;
+    renovationData?: any; // Complete renovation data for modal display
+  };
 }
 
 const HISTORY_FILE_NAME = 'design_history.json';
